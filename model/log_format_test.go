@@ -35,6 +35,32 @@ func TestFormatUserLogsStripsQuotaSaturation(t *testing.T) {
 	require.Contains(t, parsed, "model_price")
 }
 
+func TestLogVisibilityStripsUsageMetadataForUsers(t *testing.T) {
+	other := common.MapToJsonStr(map[string]any{
+		"po":                  []string{"set temperature=0"},
+		"is_model_mapped":     true,
+		"upstream_model_name": "upstream-private-model",
+	})
+
+	userLogs := []*Log{{Other: other}}
+	formatUserLogs(userLogs, 0)
+	userParsed, err := common.StrToMap(userLogs[0].Other)
+	require.NoError(t, err)
+	assert.NotContains(t, userParsed, "po")
+	assert.NotContains(t, userParsed, "is_model_mapped")
+	assert.NotContains(t, userParsed, "upstream_model_name")
+
+	adminLogs := []*Log{{Other: other}}
+	FormatAdminLogs(adminLogs)
+	adminParsed, err := common.StrToMap(adminLogs[0].Other)
+	require.NoError(t, err)
+	adminInfo, ok := adminParsed["admin_info"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, []any{"set temperature=0"}, adminInfo["po"])
+	assert.Equal(t, true, adminInfo["is_model_mapped"])
+	assert.Equal(t, "upstream-private-model", adminInfo["upstream_model_name"])
+}
+
 func TestTaskPluginLogVisibilityIsRoleSeparated(t *testing.T) {
 	other := common.MapToJsonStr(map[string]any{
 		"model_price": 1.25,

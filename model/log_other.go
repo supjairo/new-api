@@ -21,6 +21,9 @@ var legacySensitiveLogOtherKeys = []string{
 	"channel_name",
 	"channel_type",
 	"reject_reason",
+	"po",
+	"is_model_mapped",
+	"upstream_model_name",
 }
 
 type logOtherVisibility int
@@ -209,6 +212,33 @@ func normalizeLegacyRejectReason(values map[string]json.RawMessage) bool {
 	return true
 }
 
+func normalizeLegacyAdminFields(values map[string]json.RawMessage) bool {
+	adminFields := []string{"po", "is_model_mapped", "upstream_model_name"}
+	adminInfo := make(map[string]json.RawMessage)
+	if rawAdminInfo, exists := values[logOtherAdminInfoKey]; exists {
+		_ = common.Unmarshal(rawAdminInfo, &adminInfo)
+	}
+	changed := false
+	for _, key := range adminFields {
+		if value, exists := values[key]; exists {
+			if _, alreadyScoped := adminInfo[key]; !alreadyScoped {
+				adminInfo[key] = value
+			}
+			delete(values, key)
+			changed = true
+		}
+	}
+	if !changed {
+		return false
+	}
+	encodedAdminInfo, err := common.Marshal(adminInfo)
+	if err != nil {
+		return false
+	}
+	values[logOtherAdminInfoKey] = encodedAdminInfo
+	return true
+}
+
 // formatLogOtherJSON applies the role projection while keeping untouched JSON
 // values as RawMessage. This preserves integers larger than JavaScript's safe
 // range instead of round-tripping them through float64.
@@ -241,6 +271,9 @@ func formatLogOtherJSON(value string, visibility logOtherVisibility) string {
 		}
 	} else {
 		changed = normalizeLegacyRejectReason(values)
+		if normalizeLegacyAdminFields(values) {
+			changed = true
+		}
 		if visibility == logOtherVisibilityAdmin {
 			if _, exists := values[logOtherRootInfoKey]; exists {
 				delete(values, logOtherRootInfoKey)
