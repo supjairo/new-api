@@ -163,8 +163,8 @@ func taskBillingOther(task *model.Task) *model.LogOther {
 	}
 	props := task.Properties
 	if props.UpstreamModelName != "" && props.UpstreamModelName != props.OriginModelName {
-		other.SetPublic("is_model_mapped", true)
-		other.SetPublic("upstream_model_name", props.UpstreamModelName)
+		other.SetAdmin("is_model_mapped", true)
+		other.SetAdmin("upstream_model_name", props.UpstreamModelName)
 	}
 	appendTaskLogInfo(task, other)
 	return other

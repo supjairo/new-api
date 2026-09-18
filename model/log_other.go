@@ -22,6 +22,8 @@ var legacySensitiveLogOtherKeys = []string{
 	"channel_type",
 	"reject_reason",
 	"po",
+	"is_model_mapped",
+	"upstream_model_name",
 }
 
 type logOtherVisibility int
@@ -235,6 +237,40 @@ func normalizeLegacyParamOverride(values map[string]json.RawMessage) bool {
 	return true
 }
 
+func normalizeLegacyModelMapping(values map[string]json.RawMessage) bool {
+	isMapped, mapped := values["is_model_mapped"]
+	upstreamModel, hasUpstreamModel := values["upstream_model_name"]
+	if !mapped && !hasUpstreamModel {
+		return false
+	}
+
+	adminInfo := make(map[string]json.RawMessage)
+	if rawAdminInfo, exists := values[logOtherAdminInfoKey]; exists {
+		_ = common.Unmarshal(rawAdminInfo, &adminInfo)
+	}
+	if adminInfo == nil {
+		adminInfo = make(map[string]json.RawMessage)
+	}
+	if mapped {
+		if _, exists := adminInfo["is_model_mapped"]; !exists {
+			adminInfo["is_model_mapped"] = isMapped
+		}
+	}
+	if hasUpstreamModel {
+		if _, exists := adminInfo["upstream_model_name"]; !exists {
+			adminInfo["upstream_model_name"] = upstreamModel
+		}
+	}
+	encodedAdminInfo, err := common.Marshal(adminInfo)
+	if err != nil {
+		return false
+	}
+	values[logOtherAdminInfoKey] = encodedAdminInfo
+	delete(values, "is_model_mapped")
+	delete(values, "upstream_model_name")
+	return true
+}
+
 // formatLogOtherJSON applies the role projection while keeping untouched JSON
 // values as RawMessage. This preserves integers larger than JavaScript's safe
 // range instead of round-tripping them through float64.
@@ -268,6 +304,9 @@ func formatLogOtherJSON(value string, visibility logOtherVisibility) string {
 	} else {
 		changed = normalizeLegacyRejectReason(values)
 		if normalizeLegacyParamOverride(values) {
+			changed = true
+		}
+		if normalizeLegacyModelMapping(values) {
 			changed = true
 		}
 		if visibility == logOtherVisibilityAdmin {
