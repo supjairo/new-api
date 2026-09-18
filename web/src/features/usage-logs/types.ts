@@ -147,6 +147,7 @@ export interface LogOtherData {
     // Reject / intercept reason (admin only)
     reject_reason?: string
     task_plugin?: TaskPluginInfo
+    po?: string[]
   }
   root_info?: {
     task_plugin?: TaskPluginRuntimeInfo
@@ -236,7 +237,6 @@ export interface LogOtherData {
   image_generation_call_price?: number
   image_generation_call_count?: number
   is_system_prompt_overwritten?: boolean
-  po?: string[]
   billing_source?: string
   group?: string
   stream_status?: {

@@ -1300,13 +1300,16 @@ export function DetailsDialog(props: DetailsDialogProps) {
         )}
 
         {/* Param override */}
-        {other?.po && Array.isArray(other.po) && other.po.length > 0 && (
+        {props.isAdmin &&
+          adminInfo?.po &&
+          Array.isArray(adminInfo.po) &&
+          adminInfo.po.length > 0 && (
           <DetailSection
             icon={<Settings2 className='size-3.5' aria-hidden='true' />}
             iconTone='chart-3'
-            label={`${t('Param Override')} (${other.po.length})`}
+            label={`${t('Param Override')} (${adminInfo.po.length})`}
           >
-            {other.po.filter(Boolean).map((line) => {
+            {adminInfo.po.filter(Boolean).map((line) => {
               const parsed = parseAuditLine(line)
               if (!parsed) return null
               return (

@@ -36,6 +36,7 @@ const i18nKeys = {
   'Group Ratio': 'Group Ratio',
   'Total Cost': 'Total Cost',
   'Usage parameters': 'Usage parameters',
+  'Param Override': 'Param Override',
 }
 
 function makeLog(other: LogOtherData): UsageLog {
@@ -231,5 +232,19 @@ describe('usage facts billing details', () => {
     expect(screen.queryByText('resolution')).toBeNull()
     expect(screen.queryByText('seconds')).toBeNull()
     expect(screen.getByText('Total Cost')).toBeInTheDocument()
+  })
+
+  test('does not render param override details for regular users', () => {
+    queryClients.push(
+      renderDetails({
+        admin_info: {
+          po: ['set temperature=0'],
+        },
+        group_ratio: 1,
+      })
+    )
+
+    expect(screen.queryByText('Param Override')).toBeNull()
+    expect(screen.queryByText('set temperature=0')).toBeNull()
   })
 })

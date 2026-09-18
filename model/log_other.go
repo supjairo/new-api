@@ -21,6 +21,7 @@ var legacySensitiveLogOtherKeys = []string{
 	"channel_name",
 	"channel_type",
 	"reject_reason",
+	"po",
 }
 
 type logOtherVisibility int
@@ -209,6 +210,31 @@ func normalizeLegacyRejectReason(values map[string]json.RawMessage) bool {
 	return true
 }
 
+func normalizeLegacyParamOverride(values map[string]json.RawMessage) bool {
+	paramOverride, ok := values["po"]
+	if !ok {
+		return false
+	}
+
+	adminInfo := make(map[string]json.RawMessage)
+	if rawAdminInfo, exists := values[logOtherAdminInfoKey]; exists {
+		_ = common.Unmarshal(rawAdminInfo, &adminInfo)
+	}
+	if adminInfo == nil {
+		adminInfo = make(map[string]json.RawMessage)
+	}
+	if _, exists := adminInfo["po"]; !exists {
+		adminInfo["po"] = paramOverride
+	}
+	encodedAdminInfo, err := common.Marshal(adminInfo)
+	if err != nil {
+		return false
+	}
+	values[logOtherAdminInfoKey] = encodedAdminInfo
+	delete(values, "po")
+	return true
+}
+
 // formatLogOtherJSON applies the role projection while keeping untouched JSON
 // values as RawMessage. This preserves integers larger than JavaScript's safe
 // range instead of round-tripping them through float64.
@@ -241,6 +267,9 @@ func formatLogOtherJSON(value string, visibility logOtherVisibility) string {
 		}
 	} else {
 		changed = normalizeLegacyRejectReason(values)
+		if normalizeLegacyParamOverride(values) {
+			changed = true
+		}
 		if visibility == logOtherVisibilityAdmin {
 			if _, exists := values[logOtherRootInfoKey]; exists {
 				delete(values, logOtherRootInfoKey)

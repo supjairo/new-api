@@ -35,6 +35,60 @@ func TestFormatUserLogsStripsQuotaSaturation(t *testing.T) {
 	require.Contains(t, parsed, "model_price")
 }
 
+func TestFormatUserLogsStripsParamOverride(t *testing.T) {
+	other := common.MapToJsonStr(map[string]any{
+		"model_price": 0.004,
+		"admin_info": map[string]any{
+			"po": []string{"set temperature=0"},
+		},
+	})
+	logs := []*Log{{Other: other}}
+
+	formatUserLogs(logs, 0)
+
+	parsed, err := common.StrToMap(logs[0].Other)
+	require.NoError(t, err)
+	assert.NotContains(t, parsed, "po")
+	assert.NotContains(t, parsed, "admin_info")
+}
+
+func TestFormatAdminLogsRetainsParamOverride(t *testing.T) {
+	other := common.MapToJsonStr(map[string]any{
+		"admin_info": map[string]any{
+			"po": []string{"set temperature=0"},
+		},
+	})
+	logs := []*Log{{Other: other}}
+
+	FormatAdminLogs(logs)
+
+	parsed, err := common.StrToMap(logs[0].Other)
+	require.NoError(t, err)
+	adminInfo, ok := parsed["admin_info"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, []any{"set temperature=0"}, adminInfo["po"])
+}
+
+func TestLegacyParamOverrideIsAdminOnly(t *testing.T) {
+	other := common.MapToJsonStr(map[string]any{
+		"po": []string{"set temperature=0"},
+	})
+
+	userLogs := []*Log{{Other: other}}
+	formatUserLogs(userLogs, 0)
+	userParsed, err := common.StrToMap(userLogs[0].Other)
+	require.NoError(t, err)
+	assert.NotContains(t, userParsed, "po")
+
+	adminLogs := []*Log{{Other: other}}
+	FormatAdminLogs(adminLogs)
+	adminParsed, err := common.StrToMap(adminLogs[0].Other)
+	require.NoError(t, err)
+	adminInfo, ok := adminParsed["admin_info"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, []any{"set temperature=0"}, adminInfo["po"])
+}
+
 func TestTaskPluginLogVisibilityIsRoleSeparated(t *testing.T) {
 	other := common.MapToJsonStr(map[string]any{
 		"model_price": 1.25,
