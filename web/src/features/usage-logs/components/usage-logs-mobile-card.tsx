@@ -304,6 +304,7 @@ export function UsageLogsMobileList<TData>({
               <CommonLogMobileCard
                 log={row.original as UsageLog}
                 cells={cells}
+                isAdmin={isAdmin}
               />
             )}
             {logCategory === 'task' && <TaskLogsCard cells={cells} />}

@@ -1135,8 +1135,9 @@ export function DetailsDialog(props: DetailsDialogProps) {
         )}
         {/* Model mapping for logs without response observations */}
         {!other?.response_model &&
-          other?.is_model_mapped &&
-          other?.upstream_model_name && (
+          props.isAdmin &&
+          adminInfo?.is_model_mapped &&
+          adminInfo?.upstream_model_name && (
             <DetailSection label={t('Model Mapping')}>
               <DetailRow
                 label={t('Request Model')}
@@ -1145,7 +1146,7 @@ export function DetailsDialog(props: DetailsDialogProps) {
               />
               <DetailRow
                 label={t('Actual Model')}
-                value={other.upstream_model_name}
+                value={adminInfo.upstream_model_name}
                 mono
               />
             </DetailSection>

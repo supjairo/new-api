@@ -61,6 +61,7 @@ type LogField = {
 export function CommonLogMobileCard<TData>(props: {
   log: UsageLog
   cells: Map<string, Cell<TData, unknown>>
+  isAdmin?: boolean
 }) {
   const { t } = useTranslation()
   const context = useUsageLogsContext()
@@ -69,7 +70,7 @@ export function CommonLogMobileCard<TData>(props: {
   const other = parseLogOther(log.other)
   const displayable = isDisplayableLogType(log.type)
   const timing = isTimingLogType(log.type)
-  const model = formatModelName(log)
+  const model = formatModelName(log, props.isAdmin)
   const config = getLogTypeConfig(log.type)
   const group = log.group || other?.group || ''
   const groupRatio =

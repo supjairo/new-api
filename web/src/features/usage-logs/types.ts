@@ -148,6 +148,8 @@ export interface LogOtherData {
     reject_reason?: string
     task_plugin?: TaskPluginInfo
     po?: string[]
+    is_model_mapped?: boolean
+    upstream_model_name?: string
   }
   root_info?: {
     task_plugin?: TaskPluginRuntimeInfo
@@ -196,8 +198,6 @@ export interface LogOtherData {
   cache_creation_ratio?: number
   cache_creation_ratio_5m?: number
   cache_creation_ratio_1h?: number
-  is_model_mapped?: boolean
-  upstream_model_name?: string
   response_model?: {
     requested_model: string
     upstream_model: string

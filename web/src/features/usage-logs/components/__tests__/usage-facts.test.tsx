@@ -269,4 +269,38 @@ describe('usage facts billing details', () => {
     expect(screen.getByText(/Param Override/)).toBeInTheDocument()
     expect(screen.getByText('temperature=0')).toBeInTheDocument()
   })
+
+  test('does not render model mapping details for regular users', () => {
+    queryClients.push(
+      renderDetails({
+        admin_info: {
+          is_model_mapped: true,
+          upstream_model_name: 'upstream-private-model',
+        },
+        group_ratio: 1,
+      })
+    )
+
+    expect(screen.queryByText('Model Mapping')).toBeNull()
+    expect(screen.queryByText('upstream-private-model')).toBeNull()
+  })
+
+  test('renders model mapping details for admins', () => {
+    queryClients.push(
+      renderDetails(
+        {
+          admin_info: {
+            is_model_mapped: true,
+            upstream_model_name: 'upstream-private-model',
+          },
+          group_ratio: 1,
+        },
+        0,
+        true
+      )
+    )
+
+    expect(screen.getByText('Model Mapping')).toBeInTheDocument()
+    expect(screen.getByText('upstream-private-model')).toBeInTheDocument()
+  })
 })
