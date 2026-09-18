@@ -86,6 +86,8 @@ interface UsageLogsTableProps {
 export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
   const { t } = useTranslation()
   const {
+    canManageScope,
+    isRootAccount,
     isAdminView: isAdmin,
     isRootView: isRoot,
     viewAccess,
@@ -196,8 +198,8 @@ export function UsageLogsTable({ logCategory }: UsageLogsTableProps) {
   const logs = data?.items || []
   const columns = useColumnsByCategory(
     logCategory,
-    isAdmin,
-    isRoot,
+    canManageScope,
+    isRootAccount || isRoot,
     showBillingSource
   )
   const isLoadingData = isLoading || (isFetching && !data)

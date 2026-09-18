@@ -69,6 +69,30 @@ func TestFormatAdminLogsRetainsParamOverride(t *testing.T) {
 	assert.Equal(t, []any{"set temperature=0"}, adminInfo["po"])
 }
 
+func TestFormatUserLogsByRolePreservesAdminParamOverride(t *testing.T) {
+	other := common.MapToJsonStr(map[string]any{
+		"admin_info": map[string]any{
+			"po": []string{"set temperature=0"},
+		},
+	})
+
+	for _, role := range []int{common.RoleAdminUser, common.RoleRootUser} {
+		logs := []*Log{{Other: other}}
+		formatUserLogsByRole(logs, 0, role)
+		parsed, err := common.StrToMap(logs[0].Other)
+		require.NoError(t, err)
+		adminInfo, ok := parsed["admin_info"].(map[string]any)
+		require.True(t, ok)
+		assert.Equal(t, []any{"set temperature=0"}, adminInfo["po"])
+	}
+
+	logs := []*Log{{Other: other}}
+	formatUserLogsByRole(logs, 0, common.RoleCommonUser)
+	parsed, err := common.StrToMap(logs[0].Other)
+	require.NoError(t, err)
+	assert.NotContains(t, parsed, "admin_info")
+}
+
 func TestLegacyParamOverrideIsAdminOnly(t *testing.T) {
 	other := common.MapToJsonStr(map[string]any{
 		"po": []string{"set temperature=0"},

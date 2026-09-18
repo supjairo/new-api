@@ -65,7 +65,11 @@ function makeLog(other: LogOtherData): UsageLog {
   }
 }
 
-function renderDetails(other: LogOtherData, promptTokens = 0): QueryClient {
+function renderDetails(
+  other: LogOtherData,
+  promptTokens = 0,
+  isAdmin = false
+): QueryClient {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
@@ -81,7 +85,7 @@ function renderDetails(other: LogOtherData, promptTokens = 0): QueryClient {
     <QueryClientProvider client={queryClient}>
       <DetailsDialog
         log={{ ...makeLog(other), prompt_tokens: promptTokens }}
-        isAdmin={false}
+        isAdmin={isAdmin}
         isRoot={false}
         open
         onOpenChange={() => undefined}
@@ -246,5 +250,23 @@ describe('usage facts billing details', () => {
 
     expect(screen.queryByText('Param Override')).toBeNull()
     expect(screen.queryByText('set temperature=0')).toBeNull()
+  })
+
+  test('renders param override details for admins', () => {
+    queryClients.push(
+      renderDetails(
+        {
+          admin_info: {
+            po: ['set temperature=0'],
+          },
+          group_ratio: 1,
+        },
+        0,
+        true
+      )
+    )
+
+    expect(screen.getByText(/Param Override/)).toBeInTheDocument()
+    expect(screen.getByText('temperature=0')).toBeInTheDocument()
   })
 })
