@@ -35,6 +35,66 @@ func TestFormatUserLogsStripsQuotaSaturation(t *testing.T) {
 	require.Contains(t, parsed, "model_price")
 }
 
+// TestModelMappingAndParamOverrideVisibilityIsRoleSeparated verifies that the
+// channel-config-derived fields (model mapping result and parameter override
+// audit) stay in stored logs for admin/root review but are stripped from
+// user/token-visible log projections.
+func TestModelMappingAndParamOverrideVisibilityIsRoleSeparated(t *testing.T) {
+	other := common.MapToJsonStr(map[string]any{
+		"model_ratio":         1.5,
+		"is_model_mapped":     true,
+		"upstream_model_name": "gpt-4o-real-upstream",
+		"response_model": map[string]any{
+			"requested_model": "gpt-4o",
+			"upstream_model":  "gpt-4o-real-upstream",
+			"mismatch":        true,
+		},
+		"po": []any{
+			map[string]any{"action": "set", "content": `{"temperature":0.5}`},
+		},
+		"admin_info": map[string]any{
+			"is_multi_key": true,
+		},
+	})
+
+	t.Run("user", func(t *testing.T) {
+		logs := []*Log{{Other: other}}
+		formatUserLogs(logs, 0)
+
+		parsed, err := common.StrToMap(logs[0].Other)
+		require.NoError(t, err)
+		for _, key := range []string{"is_model_mapped", "upstream_model_name", "response_model", "po", "admin_info"} {
+			assert.NotContains(t, parsed, key)
+		}
+		assert.Equal(t, 1.5, parsed["model_ratio"])
+	})
+
+	t.Run("admin", func(t *testing.T) {
+		logs := []*Log{{Other: other}}
+		FormatAdminLogs(logs)
+
+		parsed, err := common.StrToMap(logs[0].Other)
+		require.NoError(t, err)
+		assert.Equal(t, true, parsed["is_model_mapped"])
+		assert.Equal(t, "gpt-4o-real-upstream", parsed["upstream_model_name"])
+		assert.Contains(t, parsed, "response_model")
+		assert.Contains(t, parsed, "po")
+		assert.NotContains(t, parsed, "root_info")
+	})
+
+	t.Run("root", func(t *testing.T) {
+		logs := []*Log{{Other: other}}
+		FormatRootLogs(logs)
+
+		parsed, err := common.StrToMap(logs[0].Other)
+		require.NoError(t, err)
+		assert.Equal(t, true, parsed["is_model_mapped"])
+		assert.Equal(t, "gpt-4o-real-upstream", parsed["upstream_model_name"])
+		assert.Contains(t, parsed, "response_model")
+		assert.Contains(t, parsed, "po")
+	})
+}
+
 func TestTaskPluginLogVisibilityIsRoleSeparated(t *testing.T) {
 	other := common.MapToJsonStr(map[string]any{
 		"model_price": 1.25,

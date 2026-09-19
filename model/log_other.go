@@ -23,6 +23,17 @@ var legacySensitiveLogOtherKeys = []string{
 	"reject_reason",
 }
 
+// userHiddenLogOtherKeys are channel-config-derived fields (model mapping
+// result, upstream response model observation, and parameter override audit)
+// that remain in stored logs for admin/root review but are stripped from
+// user/token-visible projections.
+var userHiddenLogOtherKeys = []string{
+	"is_model_mapped",
+	"upstream_model_name",
+	"response_model",
+	"po",
+}
+
 type logOtherVisibility int
 
 const (
@@ -234,6 +245,12 @@ func formatLogOtherJSON(value string, visibility logOtherVisibility) string {
 			}
 		}
 		for _, key := range legacySensitiveLogOtherKeys {
+			if _, exists := values[key]; exists {
+				delete(values, key)
+				changed = true
+			}
+		}
+		for _, key := range userHiddenLogOtherKeys {
 			if _, exists := values[key]; exists {
 				delete(values, key)
 				changed = true
