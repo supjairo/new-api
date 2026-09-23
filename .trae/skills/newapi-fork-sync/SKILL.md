@@ -1,38 +1,50 @@
 ---
 name: newapi-fork-sync
-description: 同步 New API 官方更新并核对、整合 fork 的全部自定义功能。用户要求更新上游、合并自定义分支或清理旧分支时使用；不用于部署。
+description: 同步 New API fork：官方更新进 main，rebase custom 合并线到最新官方之上。用户要求更新上游或同步 fork 时使用；不用于部署和功能开发。
 ---
 
-# New API Fork 同步
+# New API Fork 同步（双线制）
 
-目标：保留官方原版镜像，并将**所有仍需保留的自定义功能**整合到一个可用的主自定义分支。分支名、提交数和 rebase 成功不等于功能已覆盖；禁止仅因旧分支落后就跳过其改动或宣布同步完成。
+仓库只有两条分支线，这是用户的明确设计意图，不得偏离：
 
-## 轨道与安全边界
+- **`main`**：官方原版镜像，只通过 fast-forward 跟随 `upstream/main`，绝不提交任何内容。
+- **`custom`**：**唯一的**自定义分支，承载全部自定义提交，rebase 在最新 `main` 之上——**它本身就是"官方最新 + 全部自定义"的合并线**，构建和部署都使用它。
 
-- 在 `/Users/jairo/Desktop/newapi-custom` 工作。`upstream` 为官方 `QuantumNous/new-api`，`origin` 为用户的 fork `supjairo/new-api`。
-- `main` 必须等于 `upstream/main`，不承载自定义改动；自定义功能放在 `custom/*`。不要把多个独立旧分支称为已合并，除非一个指定的主自定义分支确实覆盖它们。
-- 开始前检查 `git status --short --branch`、`git remote -v`、`git branch -vv`。先记录旧的官方基线、当前工作分支和所有未提交及未跟踪文件；不得覆盖它们。不得未经请求提交、推送或删除分支。
-- 不得 force-push `main` 或用 `reset --hard` 修复分叉。`main` 不能 fast-forward 时停下，说明差异并询问用户。禁止把“保存了某个提交”作为擅自改写 `main` 的授权。
-- 不要泄露密钥或令牌。rebase 冲突不能明确解决时 abort，保留原分支并报告。
+禁止创建任何其它 `custom/*` 或长期特性分支；新的自定义工作一律直接提交到 `custom`。
 
-## 先盘点，再更新
+## 基本事实
 
-1. `git fetch upstream`、`git fetch origin` 后，列出**全部本地及 origin 上的** `custom/*` 分支，包括只在远端的分支；记录每个分支的基线、提交、改动文件和与其它分支的关系。不要将“落后 N 个官方提交”误读为“可以丢弃 N 个提交”，也不要仅凭 commit SHA 不同推断功能不同。
-2. 以实际改动为准建立简短的功能核对表：每个分支各自提供什么、与哪个分支重复、哪些是新增能力、是否被官方上游实现。对日志可见性等跨层功能，分别检查写入/持久化、旧数据读取、普通用户与管理员及 root 的 API 投影、前端各视图与测试；不能只比较一个文件或一句提交说明。
-3. 从已有分支中选择承载完整自定义功能的**唯一主自定义分支**；无法判断主分支或存在相互冲突的需求时，用通俗中文列出差异并询问用户。清晰的等价/包含关系可自行判断，但必须有代码及测试证据。若现有分支都不完整，在该主分支上补齐缺失意图，或先向用户确认无法确定的行为。
-4. 对每个旧分支给出明确状态：`已包含（证据）`、`已补齐（证据）`、`仍缺失（具体差异）`、`待用户决定（原因）`。旧分支落后或 rebase 冲突只说明处理难度，**不能**当作“已包含”或“可忽略”。不需要机械地把所有旧提交逐个 rebase；可以整合等价功能，但必须保留所需行为并验证。
+- 工作目录 `/Users/jairo/Desktop/newapi-custom`；`upstream` = `QuantumNous/new-api`（只读），`origin` = `supjairo/new-api`。
+- 开始前运行 `git status --short --branch`、`git remote -v`、`git branch -vv` 并 `git fetch upstream`、`git fetch origin`。存在未提交改动时先停下询问，绝不覆盖。
+- 自定义提交清单 = `git log --oneline main..custom`。自定义改动范围 = `git diff main...custom --stat`。
 
-## 更新与整合
+## 同步流程（官方有更新时）
 
-1. 仅在工作树安全且 `main` 可 fast-forward 时执行 `git switch main && git merge --ff-only upstream/main`；先确认 `main == upstream/main`。需要推送时正常 `git push origin main`，推送失败则停止，不强推。
-2. 在主自定义分支上 rebase 到 `main`，将未覆盖的自定义意图整合到此分支。处理重叠或冲突时检查完整调用链与行为，不能简单采用 `ours`/`theirs`，不能删除仍有用的旧功能。对涉及计费、认证、数据库、插件、前端等模块，先遵循仓库 `AGENTS.md` 中相应的读取、验证和安全规则。
-3. 审核 `git log --oneline main..HEAD`、`git diff main...HEAD --stat`，逐项重做功能核对表；对仍缺失项继续补齐或明确标记阻塞，不能称“全部已合并”。针对被整合的行为运行聚焦回归测试及相关构建。Go 后端执行 `go build ./...`；涉及 `relaykit/` 时执行 `cd relaykit && GOWORK=off go build ./...`；涉及 `web/` 时在 `web/` 执行 `bun run build`（缺依赖时先 `bun install`）。有更严格的仓库验证要求时优先遵守。
-4. 仅在用户明确要求推送时推送主自定义分支。rebase 改写历史需使用 `--force-with-lease`，推送前核实远端未出现他人新提交。
-5. **旧分支清理独立于整合**：只有确认主分支已包含全部需要的功能、验证通过，且用户明确授权删除指定分支时，才删除本地/远端旧分支。删除前列出分支名、独有提交及将被保留的替代位置，再次确认；不满足任一条件则保留，并在报告中标记为未整合/已覆盖待清理，绝不可默默丢弃。
+1. 官方轨道：`git switch main && git merge --ff-only upstream/main`，然后 `git push origin main`。无法 fast-forward 时停下报告，绝不 reset/force-push `main`。
+2. 合并线：`git switch custom && git rebase main`。冲突仅在解法明确时解决（保持官方改动、叠加自定义意图）；否则 `git rebase --abort` 并报告，绝不猜测。
+3. 验证（全部通过才算完成）：
+   - `go build ./...`（`go` 不在 PATH 时找 `~/sdk/go*/bin/go`）
+   - `go test ./model/ ./service/` 及受影响包的针对性测试
+   - 涉及 `relaykit/` 时：`cd relaykit && GOWORK=off go build ./...`
+   - 涉及 `web/` 时：在 `web/` 先 `bun install`（如缺 node_modules）再 `bun run build`，相关组件用 `bunx vitest run <测试文件>` 验证
+4. 推送合并线：`git push --force-with-lease origin custom`（rebase 改写历史必须带 lease，绝不裸 force）。用户未要求推送时不推。
+5. 报告前核对 `git log --oneline main..custom` 与 `git diff main...custom --stat`：自定义提交一个不少、无多余内容。
 
-## 中文完成报告（每次必须给出）
+## 日常自定义开发
 
-- **官方原版**：旧/新 `upstream/main` 哈希、`main` 与 `upstream/main` 是否一致、`origin/main` 推送状态及阻塞。
-- **自定义整合**：主分支名及基线；逐个列出**所有**其它 `custom/*` 分支的功能覆盖状态与证据、尚缺功能及处理方案；不要只报提交数量。说明冲突、测试/构建结果、主分支推送状态。
-- **旧分支处理**：逐一标明保留、已覆盖待清理、待补齐或经授权删除；若仍有未整合功能，明确说明“尚未合并完成”，下一步是什么。未经验证不得说“功能上完整替代”。
-- 如仅更新本技能而未执行同步，说明没有移动、合并、推送或删除任何代码分支。
+1. `git switch custom`，直接修改、提交。
+2. 推送：`git push origin custom`（首次 `git push -u origin custom`）。
+3. 新功能不加新分支；若官方随后更新，按上面同步流程 rebase。
+
+## 红线
+
+- 绝不向 `main` 提交；绝不 reset --hard / force-push `main`。
+- 绝不覆盖未提交改动；绝不未经用户明确授权删除或改写分支。
+- 不泄露密钥、token、环境值。
+- 不要凭提交数、分支名或"分支旧"判断功能已覆盖或可丢弃；以实际代码行为为准。
+
+## 中文完成报告（每次必须）
+
+- **官方原版**：旧/新 `upstream/main` 哈希与摘要、`main` 与 `upstream/main` 是否一致、推送结果、偏差说明。
+- **合并线 `custom`**：rebase 目标基线、自定义提交数与清单、冲突及解决方式、推送结果（force 模式与新哈希）、构建与测试结果。
+- **遗留**：未验证项、待用户决定事项；没有则不写。
