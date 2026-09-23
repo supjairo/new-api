@@ -39,6 +39,18 @@ description: 同步 New API fork 三线分支：官方更新进 main，rebase cu
 2. 需要部署/构建时（或让 release 保持最新）：`git switch release && git rebase custom && git push --force-with-lease origin release`。
 3. 新功能不加新分支；官方更新后按上面同步流程刷新三线。
 
+## 各场景执行规则（必须按场景对号入座）
+
+用户说"同步/更新/拉官方"时，按"同步流程"整段执行三线刷新，结束后按报告模板输出中文报告。
+
+用户在 custom 上开发后要求部署或刷新 release 时，只执行：`git switch release && git rebase custom` → 验证 → `git push --force-with-lease origin release`，不动 main。
+
+任何时候发现分支结构偏离三线定义（多了分支、release 落后于 custom、main 混入提交、release 被手工提交过），先修复结构再继续任务，并向用户说明修复了什么。
+
+- 用户要求改代码/加功能：切到 `custom` 修改提交；若手头在 release 上有未提交改动，提醒用户改动应落在 custom。
+- 修复结构与清理分支必须先征得用户确认，除非偏离是本技能同步流程自身造成的中间态。
+- 用户未说"推送"时，本地完成验证即停，报告里注明未推送。
+
 ## 红线
 
 - 绝不向 `main` 提交；绝不 reset --hard / force-push `main`。
