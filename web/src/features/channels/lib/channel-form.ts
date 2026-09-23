@@ -161,6 +161,83 @@ function isOptionalStatusCodeMapping(value: string | undefined): boolean {
   }
 }
 
+function isValidHttpStatus(value: unknown): boolean {
+  return (
+    typeof value === 'number' &&
+    Number.isInteger(value) &&
+    value >= 100 &&
+    value <= 599
+  )
+}
+
+// isOptionalErrorOverride validates the channel-level error override config.
+// Shape:
+//   [
+//     {
+//       "match":    { "http_status"?: number, "code"?: string, "type"?: string },
+//       "override": {
+//         "http_status"?: number,
+//         "body"?: { "error"?: { "message"?: string, "type"?: string, "code"?: string, "param"?: string } }
+//       }
+//     },
+//     ...
+//   ]
+// Empty string / empty array / undefined all pass. Anything that is not a
+// JSON array of objects with the above shape fails.
+function isOptionalErrorOverride(value: string | undefined): boolean {
+  try {
+    const parsed = parseOptionalJson(value)
+    if (parsed === undefined) return true
+    if (!Array.isArray(parsed)) return false
+    return parsed.every((rule) => {
+      if (!isJsonObjectValue(rule)) return false
+      const { match, override } = rule as {
+        match?: unknown
+        override?: unknown
+      }
+      if (!isJsonObjectValue(match) || !isJsonObjectValue(override)) {
+        return false
+      }
+      const m = match as Record<string, unknown>
+      const o = override as Record<string, unknown>
+      if (m.http_status !== undefined && !isValidHttpStatus(m.http_status)) {
+        return false
+      }
+      if (m.code !== undefined && typeof m.code !== 'string') return false
+      if (m.type !== undefined && typeof m.type !== 'string') return false
+      if (o.http_status !== undefined && !isValidHttpStatus(o.http_status)) {
+        return false
+      }
+      if (o.body !== undefined) {
+        if (!isJsonObjectValue(o.body)) return false
+        const body = o.body as Record<string, unknown>
+        if (body.error !== undefined) {
+          if (!isJsonObjectValue(body.error)) return false
+          const errSpec = body.error as Record<string, unknown>
+          if (
+            errSpec.message !== undefined &&
+            typeof errSpec.message !== 'string'
+          ) {
+            return false
+          }
+          if (errSpec.type !== undefined && typeof errSpec.type !== 'string') {
+            return false
+          }
+          if (errSpec.code !== undefined && typeof errSpec.code !== 'string') {
+            return false
+          }
+          if (errSpec.param !== undefined && typeof errSpec.param !== 'string') {
+            return false
+          }
+        }
+      }
+      return true
+    })
+  } catch {
+    return false
+  }
+}
+
 function isCodexCredential(value: string | undefined): boolean {
   try {
     const parsed = parseOptionalJson(value)
@@ -249,6 +326,13 @@ export const channelFormSchema = z
       .string()
       .optional()
       .refine(isOptionalJsonObject, ERROR_MESSAGES.INVALID_JSON),
+    error_override: z
+      .string()
+      .optional()
+      .refine(
+        isOptionalErrorOverride,
+        'Error override must be a JSON array of match/override rules'
+      ),
     settings: z
       .string()
       .optional()
@@ -448,6 +532,7 @@ export const CHANNEL_FORM_DEFAULT_VALUES: ChannelFormValues = {
   setting: '',
   param_override: '',
   header_override: '',
+  error_override: '',
   settings: '{}',
   other: '',
   multi_key_mode: 'single',
@@ -610,6 +695,7 @@ export function transformChannelToFormDefaults(
     setting: channel.setting || '',
     param_override: channel.param_override || '',
     header_override: channel.header_override || '',
+    error_override: channel.error_override || '',
     settings: channel.settings || '{}',
     other: channel.other || '',
     multi_key_mode: 'single',
@@ -863,6 +949,7 @@ export function transformFormDataToCreatePayload(formData: ChannelFormValues): {
     setting: buildSettingJSON(formData),
     param_override: formData.param_override || null,
     header_override: formData.header_override || null,
+    error_override: formData.error_override || null,
     settings: buildSettingsJSON(formData),
     other: formData.other || '',
   }
@@ -910,6 +997,7 @@ export function transformFormDataToUpdatePayload(
     setting: buildSettingJSON(formData),
     param_override: formData.param_override || null,
     header_override: formData.header_override || null,
+    error_override: formData.error_override || null,
     settings: buildSettingsJSON(formData),
     other: formData.other || '',
   }
@@ -936,6 +1024,7 @@ export function transformFormDataToUpdatePayload(
   payload.status_code_mapping = formData.status_code_mapping || ''
   payload.param_override = formData.param_override || ''
   payload.header_override = formData.header_override || ''
+  payload.error_override = formData.error_override || ''
 
   return payload
 }

@@ -90,6 +90,11 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		if newAPIError != nil {
 			service.RecordRequestPolicyTermination(c, newAPIError)
 			logger.LogError(c, fmt.Sprintf("relay error: %s", common.LocalLogPreview(newAPIError.Error())))
+			// Channel-level error override rewrites the wire-level fields right
+			// before the response is serialized. It does not influence retry,
+			// disable, or billing decisions, which already consumed the
+			// original upstream status code.
+			service.ApplyErrorOverride(newAPIError, common.GetContextKeyString(c, constant.ContextKeyChannelErrorOverride))
 			newAPIError.SetMessage(common.MessageWithRequestId(newAPIError.Error(), requestId))
 			switch relayFormat {
 			case types.RelayFormatOpenAIRealtime:
