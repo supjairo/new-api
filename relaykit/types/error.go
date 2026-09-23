@@ -177,6 +177,55 @@ func (e *NewAPIError) SetMessage(message string) {
 	e.Err = errors.New(message)
 }
 
+// WireErrorPatch describes optional updates to the user-visible fields of an
+// error response. A nil pointer means "leave the field untouched".
+type WireErrorPatch struct {
+	Message *string
+	Type    *string
+	Code    *string
+	Param   *string
+}
+
+// OverrideWireFields applies the patch to the wire-level error fields (those
+// serialized by ToOpenAIError / ToClaudeError). It does NOT touch the
+// internal errorType / errorCode used for classification, retry, or channel
+// disable decisions, so gateway behavior stays bound to the original upstream
+// signal. When Message is patched, e.Err is kept in sync so e.Error() keeps
+// returning what the client sees. Fields not carried by the wire format
+// (Code / Param on Claude) are silently ignored.
+func (e *NewAPIError) OverrideWireFields(patch WireErrorPatch) {
+	if e == nil {
+		return
+	}
+	switch relayErr := e.RelayError.(type) {
+	case OpenAIError:
+		if patch.Message != nil {
+			relayErr.Message = *patch.Message
+		}
+		if patch.Type != nil {
+			relayErr.Type = *patch.Type
+		}
+		if patch.Code != nil {
+			relayErr.Code = *patch.Code
+		}
+		if patch.Param != nil {
+			relayErr.Param = *patch.Param
+		}
+		e.RelayError = relayErr
+	case ClaudeError:
+		if patch.Message != nil {
+			relayErr.Message = *patch.Message
+		}
+		if patch.Type != nil {
+			relayErr.Type = *patch.Type
+		}
+		e.RelayError = relayErr
+	}
+	if patch.Message != nil && e.Err != nil {
+		e.Err = errors.New(*patch.Message)
+	}
+}
+
 func (e *NewAPIError) ToOpenAIError() OpenAIError {
 	var result OpenAIError
 	switch e.errorType {
