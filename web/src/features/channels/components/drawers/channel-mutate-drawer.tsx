@@ -2847,6 +2847,99 @@ export function ChannelMutateDrawer({
             </FormItem>
           )}
         />
+
+        <FormField
+          control={form.control}
+          name='error_override'
+          render={({ field }) => (
+            <FormItem className='space-y-3 border-t pt-4'>
+              <div className='flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between'>
+                <div className='space-y-1'>
+                  <FormLabel>{t('Error Response Override')}</FormLabel>
+                  <FormDescription>
+                    {t(
+                      'Rewrite the error response returned to clients. Rules are matched in order; the first matching rule wins.'
+                    )}
+                  </FormDescription>
+                </div>
+                <div className='flex flex-wrap gap-2'>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    size='sm'
+                    onClick={() =>
+                      field.onChange(
+                        JSON.stringify(
+                          [
+                                            {
+                              match: {
+                                http_status: 503,
+                                code: 'smart_route_no_active_candidates',
+                              },
+                              override: {
+                                http_status: 200,
+                                body: {
+                                  error: {
+                                    message:
+                                      '智能路由池当前无可用商家，请稍后再试',
+                                    type: 'service_unavailable',
+                                    code: 'upstream_no_provider',
+                                  },
+                                },
+                              },
+                            },
+                            {
+                              match: { http_status: 503 },
+                              override: {
+                                body: {
+                                  error: {
+                                    message: '上游服务异常，请稍后重试或切换分组',
+                                  },
+                                },
+                              },
+                            },
+                          ],
+                          null,
+                          2
+                        )
+                      )
+                    }
+                  >
+                    {t('Fill Template')}
+                  </Button>
+                  <Button
+                    type='button'
+                    variant='ghost'
+                    size='sm'
+                    onClick={() => field.onChange('')}
+                  >
+                    {t('Clear')}
+                  </Button>
+                </div>
+              </div>
+              <FormControl>
+                <JsonCodeEditor
+                  value={field.value || ''}
+                  onChange={field.onChange}
+                  name={field.name}
+                  onBlur={field.onBlur}
+                  textareaRef={field.ref}
+                  disabled={sensitiveLocked || isSubmitting}
+                  placeholder={t(
+                    'Configure error response override rules as a JSON array'
+                  )}
+                  heightClassName='h-40 min-h-40 max-h-40'
+                />
+              </FormControl>
+              <FormDescription className='text-xs'>
+                {t(
+                  'Each rule has a match section (http_status, code, type — all optional) and an override section (http_status plus body.error with message, type, code, param — all optional). Fields left empty are not modified.'
+                )}
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
       </fieldset>
     </div>
   )
