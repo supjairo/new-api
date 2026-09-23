@@ -23,6 +23,17 @@ var legacySensitiveLogOtherKeys = []string{
 	"reject_reason",
 }
 
+// userHiddenPublicLogOtherKeys are public-scope fields that carry upstream or
+// gateway-internal details; they stay in the stored log and in admin/root
+// projections but are removed from user-visible (self) projections.
+var userHiddenPublicLogOtherKeys = []string{
+	"response_model",
+	"request_conversion",
+	"is_model_mapped",
+	"upstream_model_name",
+	"po",
+}
+
 type logOtherVisibility int
 
 const (
@@ -234,6 +245,12 @@ func formatLogOtherJSON(value string, visibility logOtherVisibility) string {
 			}
 		}
 		for _, key := range legacySensitiveLogOtherKeys {
+			if _, exists := values[key]; exists {
+				delete(values, key)
+				changed = true
+			}
+		}
+		for _, key := range userHiddenPublicLogOtherKeys {
 			if _, exists := values[key]; exists {
 				delete(values, key)
 				changed = true
