@@ -287,10 +287,9 @@ func RecordMidjourneyPolicyResponse(c *gin.Context, response *dto.MidjourneyResp
 		}
 	}
 	state := RequestPolicy(c)
-	message := TruncatePolicyEventMessage(response.Response.Description)
-	event := PolicyEvent{ChannelID: c.GetInt("channel_id"), Status: response.StatusCode, ErrorCode: strconv.Itoa(response.Response.Code), ErrorSource: "upstream", Message: message, Decision: PolicyDecision{Action: "failure", Reason: "upstream_failure", Source: "upstream"}}
+	event := PolicyEvent{ChannelID: c.GetInt("channel_id"), Status: response.StatusCode, ErrorCode: strconv.Itoa(response.Response.Code), ErrorSource: "upstream", Decision: PolicyDecision{Action: "failure", Reason: "upstream_failure", Source: "upstream"}}
 	state.AddEvent(event)
-	event.Decision, event.Health, event.Message = PolicyDecision{Action: "stop", Reason: "non_retryable_error", Source: "system"}, "unchanged", ""
+	event.Decision, event.Health = PolicyDecision{Action: "stop", Reason: "non_retryable_error", Source: "system"}, "unchanged"
 	if accepted {
 		event.Decision.Reason = "task_accepted"
 	}
