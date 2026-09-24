@@ -5514,6 +5514,7 @@
     "Request decision flow": "请求决策流程",
     "Request error occurred": "请求发生错误",
     "Request failed": "请求失败",
+    "Final response returned to the client": "返回给客户端的最终响应",
     "Request flow": "请求流",
     "Request format": "请求格式",
     "Request Header Field": "请求头字段",

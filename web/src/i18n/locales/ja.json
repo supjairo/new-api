@@ -5514,6 +5514,7 @@
     "Request decision flow": "リクエスト判断フロー",
     "Request error occurred": "リクエストエラーが発生しました",
     "Request failed": "リクエスト失敗",
+    "Final response returned to the client": "クライアントに返された最終レスポンス",
     "Request flow": "リクエストフロー",
     "Request format": "リクエスト形式",
     "Request Header Field": "リクエストヘッダーフィールド",
