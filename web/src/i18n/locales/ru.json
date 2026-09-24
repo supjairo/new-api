@@ -4831,7 +4831,6 @@
     "Request decision flow": "Схема решений по запросу",
     "Request error occurred": "Произошла ошибка запроса",
     "Request failed": "Запрос не выполнен",
-    "Final response returned to the client": "Финальный ответ, возвращённый клиенту",
     "Request flow": "Поток запросов",
     "Request Header Field": "Поле заголовка запроса",
     "Request Header Override": "Переопределение заголовков запроса",

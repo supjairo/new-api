@@ -4831,7 +4831,6 @@
     "Request decision flow": "Parcours de décision",
     "Request error occurred": "Une erreur de requête est survenue",
     "Request failed": "Échec de la requête",
-    "Final response returned to the client": "Réponse finale renvoyée au client",
     "Request flow": "Flux de requête",
     "Request Header Field": "Champ d'en-tête de requête",
     "Request Header Override": "Remplacement des en-têtes de requête",
