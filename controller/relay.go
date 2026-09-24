@@ -100,6 +100,10 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 			// original upstream status code.
 			service.ApplyErrorOverride(newAPIError, common.GetContextKeyString(c, constant.ContextKeyChannelErrorOverride))
 			newAPIError.SetMessage(common.MessageWithRequestId(newAPIError.Error(), requestId))
+			// The final node is recorded after the override and the final
+			// message are applied, so the flow ends with the response the
+			// client actually receives, after the upstream-error nodes.
+			service.RecordRequestPolicyFinalResponse(c, newAPIError)
 			upstreamURLs := common.UpstreamAddresses(c)
 			if relayFormat != types.RelayFormatOpenAIRealtime && c.Writer.Written() &&
 				strings.HasPrefix(c.Writer.Header().Get("Content-Type"), "text/event-stream") {
@@ -740,7 +744,7 @@ func executeTaskSubmissionWith(
 	if task.Status != model.TaskStatusFailure {
 		service.MarkRequestPolicySuccess(c, nil)
 	} else {
-		policy.AddEvent(service.PolicyEvent{Decision: service.PolicyDecision{Action: "stop", Reason: "task_failed", Source: "upstream"}})
+		policy.AddEvent(service.PolicyEvent{ChannelID: relayInfo.ChannelId, Message: service.TruncatePolicyEventMessage(task.FailReason), Decision: service.PolicyDecision{Action: "stop", Reason: "task_failed", Source: "upstream"}})
 	}
 	service.LogTaskConsumption(c, relayInfo, task)
 	diagnostics.complete(task, result.Quota)
