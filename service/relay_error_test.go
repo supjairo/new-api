@@ -233,7 +233,7 @@ func TestRequestPolicyEventsReachLogAdminInfo(t *testing.T) {
 	assert.NotContains(t, other.Snapshot()["admin_info"], "request_policy", "requests without decisions do not carry an empty record")
 }
 
-func TestMarkRequestPolicySuccessRecordsStreamFailureSummary(t *testing.T) {
+func TestMarkRequestPolicySuccessStaysMessageFree(t *testing.T) {
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 	c.Set("channel_id", 9)
 	stream := relaycommon.NewStreamStatus()
@@ -244,8 +244,7 @@ func TestMarkRequestPolicySuccessRecordsStreamFailureSummary(t *testing.T) {
 	events := RequestPolicy(c).Events()
 	require.Len(t, events, 1)
 	assert.Equal(t, PolicyDecision{Action: "stop", Reason: "stream_not_successful", Source: "system"}, events[0].Decision)
-	assert.Equal(t, "end_reason=eof · soft_errors=1 · last_error=invalid upstream websocket event", events[0].Message,
-		"the stream-failure stop event explains why the delivered stream was not a success")
+	assert.Empty(t, events[0].Message, "stream failures keep the legacy message-free decision node")
 
 	state := RequestPolicy(c)
 	state.OutcomeRecorded = false
