@@ -114,6 +114,17 @@ export interface ToolSurchargeItem {
   price: number
 }
 
+// One side of an error response override rewrite: the wire-format error as it
+// arrived from upstream (original, message masked) or as the client received
+// it (overridden).
+export interface ErrorOverrideSnapshot {
+  message?: string
+  status?: number
+  type?: string
+  code?: string
+  param?: string
+}
+
 export interface LogOtherData {
   admin_info?: {
     request_policy?: PolicyEvent[]
@@ -143,6 +154,14 @@ export interface LogOtherData {
       kind: 'overflow' | 'underflow' | 'nan'
       original: number
       clamped: number
+    }
+    // Error response override audit: recorded when a channel-level override
+    // rule rewrote the error returned to the client. `original` is the
+    // upstream error (message masked); `overridden` is what the client
+    // received. Admin-only (nested under admin_info).
+    error_override?: {
+      original: ErrorOverrideSnapshot
+      overridden: ErrorOverrideSnapshot
     }
     // Reject / intercept reason (admin only)
     reject_reason?: string
