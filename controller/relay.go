@@ -88,7 +88,6 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 
 	defer func() {
 		if newAPIError != nil {
-			service.RecordRequestPolicyTermination(c, newAPIError)
 			logger.LogError(c, fmt.Sprintf("relay error: %s", common.LocalLogPreview(newAPIError.Error())))
 			// Channel-level error override rewrites the wire-level fields right
 			// before the response is serialized. It does not influence retry,
@@ -96,6 +95,10 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 			// original upstream status code.
 			service.ApplyErrorOverride(newAPIError, common.GetContextKeyString(c, constant.ContextKeyChannelErrorOverride))
 			newAPIError.SetMessage(common.MessageWithRequestId(newAPIError.Error(), requestId))
+			// The final node is recorded after the override and the final
+			// message are applied, so the flow ends with the response the
+			// client actually receives, after the upstream-error nodes.
+			service.RecordRequestPolicyFinalResponse(c, newAPIError)
 			switch relayFormat {
 			case types.RelayFormatOpenAIRealtime:
 				helper.WssError(c, ws, newAPIError.ToOpenAIError())
@@ -704,7 +707,7 @@ func executeTaskSubmissionWith(
 	if task.Status != model.TaskStatusFailure {
 		service.MarkRequestPolicySuccess(c, nil)
 	} else {
-		policy.AddEvent(service.PolicyEvent{Decision: service.PolicyDecision{Action: "stop", Reason: "task_failed", Source: "upstream"}})
+		policy.AddEvent(service.PolicyEvent{ChannelID: relayInfo.ChannelId, Message: service.TruncatePolicyEventMessage(task.FailReason), Decision: service.PolicyDecision{Action: "stop", Reason: "task_failed", Source: "upstream"}})
 	}
 	service.LogTaskConsumption(c, relayInfo, task)
 	diagnostics.complete(task, result.Quota)

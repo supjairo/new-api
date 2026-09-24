@@ -206,6 +206,21 @@ func (s *StreamStatus) TotalErrorCount() int {
 	return s.ErrorCount
 }
 
+// ErrorMessages returns the recorded soft-error messages. Callers that only
+// need a summary should prefer TotalErrorCount and index the tail.
+func (s *StreamStatus) ErrorMessages() []string {
+	if s == nil {
+		return nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	messages := make([]string, len(s.Errors))
+	for i := range s.Errors {
+		messages[i] = s.Errors[i].Message
+	}
+	return messages
+}
+
 func (s *StreamStatus) IsNormalEnd() bool {
 	if s == nil {
 		return true

@@ -4831,6 +4831,7 @@
     "Request decision flow": "Luồng quyết định yêu cầu",
     "Request error occurred": "Đã xảy ra lỗi yêu cầu",
     "Request failed": "Yêu cầu thất bại",
+    "Final response returned to the client": "Phản hồi cuối cùng trả về cho máy khách",
     "Request flow": "Luồng yêu cầu",
     "Request Header Field": "Trường header yêu cầu",
     "Request Header Override": "Ghi đè header yêu cầu",
