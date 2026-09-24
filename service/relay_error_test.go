@@ -13,6 +13,7 @@ import (
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/model"
+	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	kitdto "github.com/QuantumNous/new-api/relaykit/dto"
 	"github.com/QuantumNous/new-api/relaykit/types"
 	"github.com/QuantumNous/new-api/setting/system_setting"
@@ -186,11 +187,31 @@ func TestRequestPolicyEventsReachLogAdminInfo(t *testing.T) {
 	assert.Equal(t, "default", events[0].Group)
 	assert.Equal(t, PolicyDecision{Action: "failure", Reason: "upstream_failure", Source: "upstream"}, events[1].Decision)
 	assert.Equal(t, http.StatusUnauthorized, events[1].Status)
+	assert.Equal(t, "status_code=401, invalid credential", events[1].Message, "failure events carry the masked upstream error")
 	assert.Equal(t, PolicyDecision{Action: "stop", Reason: "attempt_budget_exhausted", Source: "global"}, events[2].Decision)
 	assert.Equal(t, "channel_disable_requested", events[2].Health, "the health entry follows the automatic disable rules")
+	assert.Empty(t, events[2].Message, "decision events without an error stay message-free")
+
+	// The flow keeps the upstream error and appends the final response as the
+	// last node, so the rewritten error the client actually receives is always
+	// the newest entry.
+	RecordPolicyFailure(c, 7, apiErr, PolicyDecision{Action: "retry", Reason: "retry_status_matched", Source: "global"})
+	RecordRequestPolicyTermination(c, apiErr)
+	events = state.Events()
+	require.Len(t, events, 6)
+	assert.Equal(t, PolicyDecision{Action: "stop", Reason: "request_failed", Source: "system"}, events[5].Decision)
+	assert.Equal(t, "status_code=401, invalid credential", events[5].Message, "the stop event carries the upstream error before any rewrite")
+
+	overridden := types.NewOpenAIError(errors.New("Model is currently busy"), types.ErrorCodeBadResponseStatusCode, http.StatusTooManyRequests)
+	RecordRequestPolicyFinalResponse(c, overridden)
+	events = state.Events()
+	require.Len(t, events, 7, "the rewritten response is appended, not merged")
+	assert.Equal(t, PolicyDecision{Action: "stop", Reason: "response_finalized", Source: "system"}, events[6].Decision)
+	assert.Equal(t, http.StatusTooManyRequests, events[6].Status, "the final node mirrors the overridden status the client receives")
+	assert.Equal(t, "status_code=429, Model is currently busy", events[6].Message)
 	common.SetContextKey(c, constant.ContextKeyChannelIsMultiKey, true)
 	RecordPolicyFailure(c, 7, apiErr, DecideRelayRetry(c, apiErr, 0))
-	assert.Equal(t, "key_disable_requested", state.Events()[4].Health)
+	assert.Equal(t, "key_disable_requested", state.Events()[8].Health)
 
 	state.BeginAttempt(&model.Channel{Id: 8}, "default")
 	c.Set("channel_id", 8)
@@ -200,14 +221,58 @@ func TestRequestPolicyEventsReachLogAdminInfo(t *testing.T) {
 	AppendRelayLogAdminInfo(c, nil, succeeded)
 	events, ok = succeeded.Snapshot()["admin_info"].(map[string]any)["request_policy"].([]PolicyEvent)
 	require.True(t, ok, "a successful relay exposes its decision events to administrators")
-	require.Len(t, events, 7, "the outcome is recorded once")
-	assert.Equal(t, PolicyDecision{Action: "success", Reason: "request_completed", Source: "upstream"}, events[6].Decision)
-	assert.Equal(t, 8, events[6].ChannelID)
-	assert.Equal(t, 2, events[6].Attempt)
+	require.Len(t, events, 11, "the outcome is recorded once")
+	assert.Equal(t, PolicyDecision{Action: "success", Reason: "request_completed", Source: "upstream"}, events[10].Decision)
+	assert.Equal(t, 8, events[10].ChannelID)
+	assert.Equal(t, 2, events[10].Attempt)
 	assert.True(t, state.Successful)
 
 	untouched, _ := gin.CreateTestContext(httptest.NewRecorder())
 	other := model.NewLogOther()
 	AppendRelayLogAdminInfo(untouched, nil, other)
 	assert.NotContains(t, other.Snapshot()["admin_info"], "request_policy", "requests without decisions do not carry an empty record")
+}
+
+func TestMarkRequestPolicySuccessRecordsStreamFailureSummary(t *testing.T) {
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Set("channel_id", 9)
+	stream := relaycommon.NewStreamStatus()
+	stream.RecordError("invalid upstream websocket event")
+	stream.SetEndReason(relaycommon.StreamEndReasonEOF, nil)
+
+	MarkRequestPolicySuccess(c, stream)
+	events := RequestPolicy(c).Events()
+	require.Len(t, events, 1)
+	assert.Equal(t, PolicyDecision{Action: "stop", Reason: "stream_not_successful", Source: "system"}, events[0].Decision)
+	assert.Equal(t, "end_reason=eof · soft_errors=1 · last_error=invalid upstream websocket event", events[0].Message,
+		"the stream-failure stop event explains why the delivered stream was not a success")
+
+	state := RequestPolicy(c)
+	state.OutcomeRecorded = false
+	completed := relaycommon.NewStreamStatus()
+	completed.SetEndReason(relaycommon.StreamEndReasonDone, nil)
+	MarkRequestPolicySuccess(c, completed)
+	events = state.Events()
+	require.Len(t, events, 2)
+	assert.Equal(t, PolicyDecision{Action: "success", Reason: "request_completed", Source: "upstream"}, events[1].Decision)
+	assert.Empty(t, events[1].Message, "successful streams stay message-free")
+}
+
+func TestAnnotateLastEventAddsLateFacts(t *testing.T) {
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	MarkRequestPolicySuccess(c, nil)
+	events := RequestPolicy(c).Events()
+	require.Len(t, events, 1)
+	assert.Equal(t, PolicyDecision{Action: "success", Reason: "request_completed", Source: "upstream"}, events[0].Decision)
+
+	RequestPolicy(c).AnnotateLastEvent("success", "上游没有返回计费信息，无法扣费（可能是上游超时）")
+	events = RequestPolicy(c).Events()
+	assert.Equal(t, "上游没有返回计费信息，无法扣费（可能是上游超时）", events[0].Message,
+		"a late unbilled fact annotates the success outcome without changing its decision")
+	assert.Equal(t, PolicyDecision{Action: "success", Reason: "request_completed", Source: "upstream"}, events[0].Decision)
+
+	RequestPolicy(c).AnnotateLastEvent("stop", "ignored")
+	events = RequestPolicy(c).Events()
+	assert.Equal(t, "上游没有返回计费信息，无法扣费（可能是上游超时）", events[0].Message,
+		"annotation is a no-op when no event matches the requested action")
 }
