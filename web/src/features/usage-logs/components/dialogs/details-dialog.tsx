@@ -50,6 +50,7 @@ import {
   Info,
   LogIn,
   Workflow,
+  Replace,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
@@ -96,7 +97,11 @@ import {
   isPerCallBilling,
   isTimingLogType,
 } from '../../lib/utils'
-import { USAGE_BILLING_PATH, type LogOtherData } from '../../types'
+import {
+  USAGE_BILLING_PATH,
+  type ErrorOverrideSnapshot,
+  type LogOtherData,
+} from '../../types'
 import { ResponseModelDetails } from '../model-badge'
 import { PluginAuthorLink } from '../plugin-author-link'
 import {
@@ -173,6 +178,18 @@ function quotaSaturationKindLabel(
   if (kind === 'overflow') return t('Overflow')
   if (kind === 'underflow') return t('Underflow')
   return t('Invalid (NaN)')
+}
+
+// Renders one side of an error response override audit (original/overridden)
+// as a single readable line, mirroring the backend error log content style.
+function errorOverrideSummary(snapshot: ErrorOverrideSnapshot): string {
+  const parts: string[] = []
+  if (snapshot.status) parts.push(`status_code=${snapshot.status}`)
+  if (snapshot.message) parts.push(snapshot.message)
+  if (snapshot.type) parts.push(`type=${snapshot.type}`)
+  if (snapshot.code) parts.push(`code=${snapshot.code}`)
+  if (snapshot.param) parts.push(`param=${snapshot.param}`)
+  return parts.join(', ')
 }
 
 function BillingBreakdown(props: {
@@ -894,6 +911,29 @@ export function DetailsDialog(props: DetailsDialogProps) {
             <DetailRow
               label={t('Operation')}
               value={other.admin_info.quota_saturation.op}
+              mono
+            />
+          </DetailSection>
+        )}
+
+        {/* Error response override (admin only) */}
+        {props.isAdmin && other?.admin_info?.error_override && (
+          <DetailSection
+            icon={<Replace className='size-3.5' aria-hidden='true' />}
+            label={t('Error Response Override')}
+          >
+            <DetailRow
+              label={t('Original error')}
+              value={errorOverrideSummary(
+                other.admin_info.error_override.original
+              )}
+              mono
+            />
+            <DetailRow
+              label={t('Overridden error')}
+              value={errorOverrideSummary(
+                other.admin_info.error_override.overridden
+              )}
               mono
             />
           </DetailSection>

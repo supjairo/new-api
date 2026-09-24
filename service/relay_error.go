@@ -94,6 +94,12 @@ func RecordRelayErrorLog(c *gin.Context, channelId int, err *types.NewAPIError, 
 	other.SetPublic("error_type", err.GetErrorType())
 	other.SetPublic("error_code", err.GetErrorCode())
 	other.SetPublic("status_code", err.StatusCode)
+	// Error response override audit (admin only): recorded when the
+	// channel's override rules will rewrite this error for the client.
+	value, _ := common.GetContextKey(c, constant.ContextKeyErrorOverrideAudit)
+	if audit, _ := value.(*ErrorOverrideAudit); audit != nil && audit.Overridden != audit.Original {
+		other.SetAdmin("error_override", audit)
+	}
 	AppendRelayLogAdminInfo(c, relayInfo, other)
 	appendRequestPluginRecord(relayInfo, other)
 	AppendResponseModelLogInfo(relayInfo, other)
