@@ -6,13 +6,20 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/constant"
+	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/relaykit/types"
+
 	"github.com/gin-gonic/gin"
+	"github.com/glebarez/sqlite"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 func TestResetStatusCode(t *testing.T) {
@@ -359,4 +366,136 @@ func TestApplyErrorOverride(t *testing.T) {
 
 		require.Equal(t, "boom", err.ToOpenAIError().Message)
 	})
+}
+
+func TestEvaluateErrorOverride(t *testing.T) {
+	t.Parallel()
+
+	t.Run("no rules or no match yields no audit", func(t *testing.T) {
+		t.Parallel()
+
+		err := types.WithOpenAIError(types.OpenAIError{Message: "boom", Type: "y", Code: "x"}, http.StatusServiceUnavailable)
+		require.Nil(t, evaluateErrorOverride(err, ""))
+		require.Nil(t, evaluateErrorOverride(err, "not json"))
+		require.Nil(t, evaluateErrorOverride(err, `[{"match":{"http_status":500},"override":{"body":{"error":{"message":"m"}}}}]`))
+	})
+
+	t.Run("audit keeps the masked original and the overridden result", func(t *testing.T) {
+		t.Parallel()
+
+		err := types.WithOpenAIError(types.OpenAIError{
+			Message: "upstream https://private.example.com/v1?token=secret-tok rejected: bad key",
+			Type:    "invalid_request_error",
+			Code:    "invalid_api_key",
+		}, http.StatusUnauthorized)
+		rules := `[{"match":{},"override":{"http_status":429,"body":{"error":{"message":"当前分组上游负载已饱和，请稍后再试","type":"rate_limit_error","code":"rate_limited"}}}}]`
+
+		audit := evaluateErrorOverride(err, rules)
+
+		require.NotNil(t, audit)
+		require.Equal(t, http.StatusUnauthorized, audit.Original.Status)
+		assert.NotContains(t, audit.Original.Message, "secret-tok")
+		assert.NotContains(t, audit.Original.Message, "private.example.com")
+		assert.Contains(t, audit.Original.Message, "rejected: bad key")
+		assert.Equal(t, "invalid_api_key", audit.Original.Code)
+		assert.Equal(t, "invalid_request_error", audit.Original.Type)
+		require.Equal(t, http.StatusTooManyRequests, audit.Overridden.Status)
+		assert.Equal(t, "当前分组上游负载已饱和，请稍后再试", audit.Overridden.Message)
+		assert.Equal(t, "rate_limit_error", audit.Overridden.Type)
+		assert.Equal(t, "rate_limited", audit.Overridden.Code)
+		// Evaluation is read-only: the error stays untouched for the retry loop.
+		require.Equal(t, http.StatusUnauthorized, err.StatusCode)
+		require.Equal(t, "invalid_api_key", fmt.Sprintf("%v", err.ToOpenAIError().Code))
+	})
+
+	t.Run("claude errors carry no code or param", func(t *testing.T) {
+		t.Parallel()
+
+		err := types.WithClaudeError(types.ClaudeError{Type: "invalid_request_error", Message: "bad body"}, http.StatusBadRequest)
+		rules := `[{"match":{},"override":{"body":{"error":{"message":"请求参数有误","code":"rewritten_code","param":"p"}}}}]`
+
+		audit := evaluateErrorOverride(err, rules)
+
+		require.NotNil(t, audit)
+		assert.Equal(t, "bad body", audit.Original.Message)
+		assert.Empty(t, audit.Original.Code)
+		assert.Equal(t, "请求参数有误", audit.Overridden.Message)
+		// OverrideWireFields drops code/param for Claude, so the audit does not record them either.
+		assert.Empty(t, audit.Overridden.Code)
+		assert.Empty(t, audit.Overridden.Param)
+	})
+}
+
+func TestErrorOverrideAuditReachesErrorLog(t *testing.T) {
+	previousDB, previousType := model.DB, common.MainDatabaseType()
+	previousLogDB := model.LOG_DB
+	previousCache, previousRedis := common.MemoryCacheEnabled, common.RedisEnabled
+	previousErrorLog, previousAutoDisable := constant.ErrorLogEnabled, common.AutomaticDisableChannelEnabled
+	t.Cleanup(func() {
+		model.DB = previousDB
+		model.LOG_DB = previousLogDB
+		common.SetMainDatabaseType(previousType)
+		common.MemoryCacheEnabled, common.RedisEnabled = previousCache, previousRedis
+		constant.ErrorLogEnabled = previousErrorLog
+		common.AutomaticDisableChannelEnabled = previousAutoDisable
+	})
+	database, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	sqlDB, err := database.DB()
+	require.NoError(t, err)
+	sqlDB.SetMaxOpenConns(1)
+	t.Cleanup(func() { require.NoError(t, sqlDB.Close()) })
+	require.NoError(t, database.AutoMigrate(&model.Channel{}, &model.Ability{}, &model.User{}, &model.Log{}))
+	model.DB = database
+	model.LOG_DB = database
+	common.SetMainDatabaseType(common.DatabaseTypeSQLite)
+	common.MemoryCacheEnabled, common.RedisEnabled = false, false
+	common.AutomaticDisableChannelEnabled = false
+	constant.ErrorLogEnabled = true
+	user := &model.User{Username: "override-audit", Role: common.RoleCommonUser, Status: common.UserStatusEnabled}
+	require.NoError(t, database.Create(user).Error)
+
+	rules := `[{"match":{"http_status":401},"override":{"http_status":429,"body":{"error":{"message":"服务繁忙，请稍后再试"}}}}]`
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
+	c.Set("id", user.Id)
+	c.Set("token_name", "tok")
+	c.Set("original_model", "gpt-test")
+	c.Set("token_id", 1)
+	c.Set("group", "default")
+	common.SetContextKey(c, constant.ContextKeyChannelErrorOverride, rules)
+
+	// First attempt fails with 401: the rule matches, the audit reaches the log.
+	firstErr := types.WithOpenAIError(types.OpenAIError{Message: "invalid credential", Type: "invalid_request_error", Code: "invalid_api_key"}, http.StatusUnauthorized)
+	PrepareErrorOverrideAudit(c, firstErr)
+	ProcessChannelError(c, *types.NewChannelError(7, 1, "override-audit-ch", false, "fixture-key", false), firstErr, nil)
+
+	// Second attempt fails with 500: the rule does not match, and the stale
+	// audit from the first attempt must not leak into this log row.
+	secondErr := types.WithOpenAIError(types.OpenAIError{Message: "internal boom", Type: "server_error", Code: "internal_error"}, http.StatusInternalServerError)
+	PrepareErrorOverrideAudit(c, secondErr)
+	ProcessChannelError(c, *types.NewChannelError(8, 1, "override-audit-ch", false, "fixture-key", false), secondErr, nil)
+
+	var logs []model.Log
+	require.NoError(t, database.Where("type = ?", model.LogTypeError).Order("id asc").Find(&logs).Error)
+	require.Len(t, logs, 2)
+
+	readAudit := func(other string) *ErrorOverrideAudit {
+		var payload struct {
+			AdminInfo struct {
+				ErrorOverride *ErrorOverrideAudit `json:"error_override"`
+			} `json:"admin_info"`
+		}
+		require.NoError(t, common.Unmarshal([]byte(other), &payload))
+		return payload.AdminInfo.ErrorOverride
+	}
+
+	first := readAudit(logs[0].Other)
+	require.NotNil(t, first, "a matched override records its audit under admin_info")
+	assert.Equal(t, http.StatusUnauthorized, first.Original.Status)
+	assert.Equal(t, "invalid credential", first.Original.Message)
+	assert.Equal(t, "invalid_api_key", first.Original.Code)
+	assert.Equal(t, http.StatusTooManyRequests, first.Overridden.Status)
+	assert.Equal(t, "服务繁忙，请稍后再试", first.Overridden.Message)
+	assert.Nil(t, readAudit(logs[1].Other), "an unmatched error leaves no override audit")
 }

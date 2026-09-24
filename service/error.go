@@ -12,10 +12,13 @@ import (
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/constant"
 	taskdto "github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/relaykit/dto"
 	"github.com/QuantumNous/new-api/relaykit/types"
+
+	"github.com/gin-gonic/gin"
 )
 
 func MidjourneyErrorWrapper(code int, desc string) *taskdto.MidjourneyResponse {
@@ -376,4 +379,100 @@ func wireErrorCode(err *types.NewAPIError) string {
 		}
 	}
 	return ""
+}
+
+// ErrorOverrideSnapshot describes one side of an error override rewrite: the
+// wire-format error as it arrived from upstream ("original") or as the client
+// will receive it ("overridden"). The original message is masked like every
+// other admin-facing error record.
+type ErrorOverrideSnapshot struct {
+	Message string `json:"message,omitempty"`
+	Status  int    `json:"status,omitempty"`
+	Type    string `json:"type,omitempty"`
+	Code    string `json:"code,omitempty"`
+	Param   string `json:"param,omitempty"`
+}
+
+// ErrorOverrideAudit records an error response override hit in the error log:
+// the original upstream error and the rewritten error the client receives.
+// It is evaluated when the log row is written, before the override is applied
+// to the response; the rules and the error are unchanged in between, so the
+// record and the client response always describe the same rewrite.
+type ErrorOverrideAudit struct {
+	Original   ErrorOverrideSnapshot `json:"original"`
+	Overridden ErrorOverrideSnapshot `json:"overridden"`
+}
+
+// wireErrorSnapshot captures the user-visible wire fields of the error — the
+// fields an override can rewrite and the ones the client would receive.
+func wireErrorSnapshot(err *types.NewAPIError) ErrorOverrideSnapshot {
+	snapshot := ErrorOverrideSnapshot{Status: err.StatusCode, Message: err.Error(), Type: string(err.GetErrorType())}
+	switch relayErr := err.RelayError.(type) {
+	case types.OpenAIError:
+		snapshot.Message = relayErr.Message
+		snapshot.Type = relayErr.Type
+		snapshot.Param = relayErr.Param
+		snapshot.Code = wireErrorCode(err)
+	case types.ClaudeError:
+		snapshot.Message = relayErr.Message
+		snapshot.Type = relayErr.Type
+	}
+	return snapshot
+}
+
+// evaluateErrorOverride inspects err against rulesStr and returns the audit
+// for the first matching rule without mutating err. It returns nil when no
+// rule matches or the rules are absent or malformed.
+func evaluateErrorOverride(err *types.NewAPIError, rulesStr string) *ErrorOverrideAudit {
+	if err == nil || rulesStr == "" || rulesStr == "{}" || rulesStr == "[]" {
+		return nil
+	}
+	var rules []ErrorOverrideRule
+	if uerr := common.Unmarshal([]byte(rulesStr), &rules); uerr != nil {
+		return nil
+	}
+	for i := range rules {
+		if !errorOverrideRuleMatches(err, &rules[i].Match) {
+			continue
+		}
+		original := wireErrorSnapshot(err)
+		original.Message = common.MaskSensitiveInfo(original.Message)
+		overridden := original
+		if o := &rules[i].Override; o.HTTPStatus != nil {
+			overridden.Status = *o.HTTPStatus
+		}
+		spec := rules[i].Override.Body.Error
+		if spec.Message != "" {
+			overridden.Message = spec.Message
+		}
+		if spec.Type != "" {
+			overridden.Type = spec.Type
+		}
+		if spec.Code != "" {
+			overridden.Code = spec.Code
+		}
+		if spec.Param != "" {
+			overridden.Param = spec.Param
+		}
+		// Claude wire errors carry neither code nor param, so OverrideWireFields
+		// silently drops both there — the audit must not record them either.
+		if _, ok := err.RelayError.(types.OpenAIError); !ok {
+			overridden.Code, overridden.Param = "", ""
+		}
+		return &ErrorOverrideAudit{Original: original, Overridden: overridden}
+	}
+	return nil
+}
+
+// PrepareErrorOverrideAudit evaluates the channel error override rules against
+// err and stores the audit for the error log written by ProcessChannelError.
+// Each failed attempt replaces the stored audit, so a match from an earlier
+// attempt can never reach a later attempt's log row. The response rewrite
+// itself stays in ApplyErrorOverride, which re-evaluates the same unchanged
+// error against the same rules.
+func PrepareErrorOverrideAudit(c *gin.Context, err *types.NewAPIError) {
+	if c == nil {
+		return
+	}
+	common.SetContextKey(c, constant.ContextKeyErrorOverrideAudit, evaluateErrorOverride(err, common.GetContextKeyString(c, constant.ContextKeyChannelErrorOverride)))
 }
