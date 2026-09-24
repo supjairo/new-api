@@ -1,7 +1,9 @@
 package service
 
 import (
+	"fmt"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -172,14 +174,40 @@ func MarkRequestPolicySuccess(c *gin.Context, stream *relaycommon.StreamStatus) 
 	state.OutcomeRecorded = true
 	state.Successful = stream == nil || stream.IsNormalEnd() && !stream.HasErrors() && (stream.ResponseOutcome() == "" || stream.ResponseOutcome() == "completed")
 	decision := PolicyDecision{Action: "success", Reason: "request_completed", Source: "upstream"}
+	message := ""
 	if !state.Successful {
 		decision = PolicyDecision{Action: "stop", Reason: "stream_not_successful", Source: "system"}
+		message = TruncatePolicyEventMessage(streamFailureSummary(stream))
 	}
 	channelID := 0
 	if c != nil {
 		channelID = c.GetInt("channel_id")
 	}
-	state.AddEvent(PolicyEvent{ChannelID: channelID, Decision: decision})
+	state.AddEvent(PolicyEvent{ChannelID: channelID, Message: message, Decision: decision})
+}
+
+// streamFailureSummary condenses the stream-level failure facts so the
+// decision flow can explain why a delivered-but-broken stream was not
+// counted as a success. Messages come from StreamStatus, which never stores
+// upstream credentials or request content.
+func streamFailureSummary(stream *relaycommon.StreamStatus) string {
+	parts := make([]string, 0, 4)
+	if reason := stream.EndReason; reason != "" && reason != relaycommon.StreamEndReasonDone {
+		parts = append(parts, "end_reason="+string(reason))
+	}
+	if outcome := stream.ResponseOutcome(); outcome != "" && outcome != "completed" {
+		parts = append(parts, "response_status="+outcome)
+	}
+	if count := stream.TotalErrorCount(); count > 0 {
+		parts = append(parts, fmt.Sprintf("soft_errors=%d", count))
+		if messages := stream.ErrorMessages(); len(messages) > 0 {
+			parts = append(parts, "last_error="+messages[len(messages)-1])
+		}
+	}
+	if stream.EndError != nil {
+		parts = append(parts, "end_error="+stream.EndError.Error())
+	}
+	return strings.Join(parts, " · ")
 }
 
 // Rules explicitly inherit the global default or override it. Rules without a
