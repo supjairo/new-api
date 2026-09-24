@@ -9,8 +9,6 @@ export function policyLabel(t: TFunction, value: string): string {
       return t('Upstream request failed')
     case 'request_failed':
       return t('Request failed')
-    case 'response_finalized':
-      return t('Final response returned to the client')
     case 'task_failed':
       return t('Task failed')
     case 'strict_session':
