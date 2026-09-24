@@ -1,9 +1,7 @@
 package service
 
 import (
-	"fmt"
 	"slices"
-	"strings"
 	"sync"
 	"time"
 
@@ -17,21 +15,6 @@ import (
 )
 
 const requestPolicyContextKey = "request_policy_state"
-
-// policyEventMessageLimit bounds the recorded error message so the decision
-// flow stays a summary record rather than a full error dump.
-const policyEventMessageLimit = 300
-
-// TruncatePolicyEventMessage bounds an error message recorded on a policy
-// event. It is exported because the controller and relay layers add events
-// that carry caller-specific messages.
-func TruncatePolicyEventMessage(message string) string {
-	runes := []rune(message)
-	if len(runes) <= policyEventMessageLimit {
-		return message
-	}
-	return string(runes[:policyEventMessageLimit]) + "…"
-}
 
 type PolicyDecision struct {
 	Action string `json:"action"`
@@ -47,7 +30,6 @@ type PolicyEvent struct {
 	Status      int            `json:"status,omitempty"`
 	ErrorCode   string         `json:"error_code,omitempty"`
 	ErrorSource string         `json:"error_source,omitempty"`
-	Message     string         `json:"message,omitempty"`
 	ElapsedMS   int64          `json:"elapsed_ms"`
 	Decision    PolicyDecision `json:"decision"`
 	Health      string         `json:"health,omitempty"`
@@ -104,28 +86,6 @@ func (s *RequestPolicyState) Events() []PolicyEvent {
 	return slices.Clone(s.events)
 }
 
-// AnnotateLastEvent attaches a caller-provided message to the newest event
-// whose action matches, without changing its decision. A non-zero statusCode
-// additionally rewrites the recorded HTTP status so the node mirrors the
-// response the client actually receives (for example after a channel-level
-// error override).
-func (s *RequestPolicyState) AnnotateLastEvent(action, message string, statusCode ...int) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	for i := len(s.events) - 1; i >= 0; i-- {
-		if s.events[i].Decision.Action != action {
-			continue
-		}
-		if message != "" {
-			s.events[i].Message = TruncatePolicyEventMessage(message)
-		}
-		if len(statusCode) > 0 && statusCode[0] != 0 {
-			s.events[i].Status = statusCode[0]
-		}
-		return
-	}
-}
-
 func (s *RequestPolicyState) BeginAttempt(channel *model.Channel, group string) {
 	s.Attempts++
 	s.Successful = false
@@ -151,12 +111,12 @@ func RecordPolicyFailure(c *gin.Context, channelID int, err *types.NewAPIError, 
 		source = "local"
 	}
 	state := RequestPolicy(c)
-	event := PolicyEvent{ChannelID: channelID, Status: err.StatusCode, ErrorCode: string(err.GetErrorCode()), ErrorSource: source, Message: TruncatePolicyEventMessage(err.MaskSensitiveErrorWithStatusCode()), Decision: PolicyDecision{Action: "failure", Reason: "upstream_failure", Source: source}}
+	event := PolicyEvent{ChannelID: channelID, Status: err.StatusCode, ErrorCode: string(err.GetErrorCode()), ErrorSource: source, Decision: PolicyDecision{Action: "failure", Reason: "upstream_failure", Source: source}}
 	if source == "local" {
 		event.Decision.Reason = "local_rejection"
 	}
 	state.AddEvent(event)
-	event.Decision, event.Health, event.Message = decision, "unchanged", ""
+	event.Decision, event.Health = decision, "unchanged"
 	if source != "local" && c.GetBool("auto_ban") && ShouldDisableChannel(err) {
 		event.Health = "channel_disable_requested"
 		if common.GetContextKeyBool(c, constant.ContextKeyChannelIsMultiKey) {
@@ -174,40 +134,14 @@ func MarkRequestPolicySuccess(c *gin.Context, stream *relaycommon.StreamStatus) 
 	state.OutcomeRecorded = true
 	state.Successful = stream == nil || stream.IsNormalEnd() && !stream.HasErrors() && (stream.ResponseOutcome() == "" || stream.ResponseOutcome() == "completed")
 	decision := PolicyDecision{Action: "success", Reason: "request_completed", Source: "upstream"}
-	message := ""
 	if !state.Successful {
 		decision = PolicyDecision{Action: "stop", Reason: "stream_not_successful", Source: "system"}
-		message = TruncatePolicyEventMessage(streamFailureSummary(stream))
 	}
 	channelID := 0
 	if c != nil {
 		channelID = c.GetInt("channel_id")
 	}
-	state.AddEvent(PolicyEvent{ChannelID: channelID, Message: message, Decision: decision})
-}
-
-// streamFailureSummary condenses the stream-level failure facts so the
-// decision flow can explain why a delivered-but-broken stream was not
-// counted as a success. Messages come from StreamStatus, which never stores
-// upstream credentials or request content.
-func streamFailureSummary(stream *relaycommon.StreamStatus) string {
-	parts := make([]string, 0, 4)
-	if reason := stream.EndReason; reason != "" && reason != relaycommon.StreamEndReasonDone {
-		parts = append(parts, "end_reason="+string(reason))
-	}
-	if outcome := stream.ResponseOutcome(); outcome != "" && outcome != "completed" {
-		parts = append(parts, "response_status="+outcome)
-	}
-	if count := stream.TotalErrorCount(); count > 0 {
-		parts = append(parts, fmt.Sprintf("soft_errors=%d", count))
-		if messages := stream.ErrorMessages(); len(messages) > 0 {
-			parts = append(parts, "last_error="+messages[len(messages)-1])
-		}
-	}
-	if stream.EndError != nil {
-		parts = append(parts, "end_error="+stream.EndError.Error())
-	}
-	return strings.Join(parts, " · ")
+	state.AddEvent(PolicyEvent{ChannelID: channelID, Decision: decision})
 }
 
 // Rules explicitly inherit the global default or override it. Rules without a
@@ -229,9 +163,8 @@ func EffectiveSessionMode(setting *operation_setting.ChannelAffinitySetting, rul
 }
 
 // RecordRequestPolicyTermination appends the final decision after routing has
-// stopped, carrying the upstream error as received before any rewrite. It
-// never writes a log row itself: the per-channel error log written by
-// ProcessChannelError already carries the decision record, so a second row
+// stopped. It never writes a log row itself: the per-channel error log written
+// by ProcessChannelError already carries the decision record, so a second row
 // here would duplicate it.
 func RecordRequestPolicyTermination(c *gin.Context, apiErr *types.NewAPIError) {
 	if c == nil || apiErr == nil {
@@ -244,18 +177,6 @@ func RecordRequestPolicyTermination(c *gin.Context, apiErr *types.NewAPIError) {
 	state.FinalLogged = true
 	events := state.Events()
 	if len(events) == 0 || events[len(events)-1].Decision.Action != "stop" {
-		state.AddEvent(PolicyEvent{ChannelID: c.GetInt("channel_id"), Status: apiErr.StatusCode, ErrorCode: string(apiErr.GetErrorCode()), Message: TruncatePolicyEventMessage(apiErr.MaskSensitiveErrorWithStatusCode()), Decision: PolicyDecision{Action: "stop", Reason: "request_failed", Source: "system"}, Health: "unchanged"})
+		state.AddEvent(PolicyEvent{ChannelID: c.GetInt("channel_id"), Status: apiErr.StatusCode, ErrorCode: string(apiErr.GetErrorCode()), Decision: PolicyDecision{Action: "stop", Reason: "request_failed", Source: "system"}, Health: "unchanged"})
 	}
-}
-
-// RecordRequestPolicyFinalResponse appends the last decision-flow node: the
-// response the client actually receives, after channel-level error overrides
-// and request-id decoration were applied. It is always a new node so the flow
-// shows the upstream error and the rewritten final error side by side, with
-// the rewritten one last.
-func RecordRequestPolicyFinalResponse(c *gin.Context, apiErr *types.NewAPIError) {
-	if c == nil || apiErr == nil {
-		return
-	}
-	RequestPolicy(c).AddEvent(PolicyEvent{ChannelID: c.GetInt("channel_id"), Status: apiErr.StatusCode, ErrorCode: string(apiErr.GetErrorCode()), Message: TruncatePolicyEventMessage(apiErr.MaskSensitiveErrorWithStatusCode()), Decision: PolicyDecision{Action: "stop", Reason: "response_finalized", Source: "system"}, Health: "unchanged"})
 }
