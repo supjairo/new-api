@@ -47,11 +47,6 @@ export function PolicyDecisionRecord(props: {
             {t('Source')}: {policyLabel(t, event.decision.source)}
             {event.health ? ` · ${policyLabel(t, event.health)}` : ''}
           </p>
-          {event.message ? (
-            <p className='text-muted-foreground mt-1 break-words font-mono text-xs'>
-              {event.message}
-            </p>
-          ) : null}
         </li>
       ))}
     </ol>
