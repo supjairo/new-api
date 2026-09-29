@@ -306,6 +306,12 @@ func ApplyErrorOverride(err *types.NewAPIError, rulesStr string) {
 }
 
 func errorOverrideRuleMatches(err *types.NewAPIError, m *ErrorOverrideMatch) bool {
+	// Only upstream-originated errors are eligible for override. Local
+	// gateway errors (quota, validation, routing, ...) always carry the
+	// new_api_error type and must keep their messages for the client.
+	if err.GetErrorType() == types.ErrorTypeNewAPIError {
+		return false
+	}
 	if m == nil {
 		return true
 	}
