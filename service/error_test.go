@@ -429,6 +429,69 @@ func TestApplyErrorOverride(t *testing.T) {
 	})
 }
 
+func TestApplyStreamErrorOverride(t *testing.T) {
+	t.Parallel()
+
+	t.Run("rewrites a failed responses event and keeps other fields", func(t *testing.T) {
+		t.Parallel()
+
+		tree := StreamErrorEvent("response.failed", map[string]any{
+			"error": map[string]any{"message": "stream disconnected before completion", "code": "stream_disconnected", "type": "server_error"},
+		})
+		rules := `[{"match":{"event":"response.failed","error.code":"stream_disconnected"},"override":{"error.message":"服务繁忙，请稍后再试","error.code":"server_busy"}}]`
+
+		rewritten := ApplyStreamErrorOverride(tree, rules)
+
+		require.NotNil(t, rewritten)
+		require.Equal(t, "response.failed", rewritten["event"])
+		errObj := rewritten["error"].(map[string]any)
+		require.Equal(t, "服务繁忙，请稍后再试", errObj["message"])
+		require.Equal(t, "server_busy", errObj["code"])
+		require.Equal(t, "server_error", errObj["type"], "fields not listed in override pass through")
+	})
+
+	t.Run("synthesized abort event matches end_reason", func(t *testing.T) {
+		t.Parallel()
+
+		tree := StreamAbortEvent("timeout", 12, false)
+		rules := `[{"match":{"event":"stream.aborted","end_reason":"timeout"},"override":{"error.message":"上游流式响应中断，请稍后重试","error.code":"stream_aborted"}}]`
+
+		rewritten := ApplyStreamErrorOverride(tree, rules)
+
+		require.NotNil(t, rewritten)
+		require.Equal(t, "stream.aborted", rewritten["event"])
+		require.Equal(t, 12, rewritten["received_events"])
+		errObj := rewritten["error"].(map[string]any)
+		require.Equal(t, "上游流式响应中断，请稍后重试", errObj["message"])
+	})
+
+	t.Run("no rules or no match leaves the event untouched", func(t *testing.T) {
+		t.Parallel()
+
+		tree := StreamErrorEvent("response.failed", map[string]any{
+			"error": map[string]any{"message": "boom", "code": "x"},
+		})
+		require.Nil(t, ApplyStreamErrorOverride(tree, ""))
+		require.Nil(t, ApplyStreamErrorOverride(tree, "not json"))
+		require.Nil(t, ApplyStreamErrorOverride(tree, `[{"match":{"event":"response.completed"},"override":{"error.message":"m"}}]`))
+		// Input tree is not mutated.
+		require.Equal(t, "boom", tree["error"].(map[string]any)["message"])
+	})
+
+	t.Run("input tree is never mutated on rewrite", func(t *testing.T) {
+		t.Parallel()
+
+		tree := StreamErrorEvent("response.failed", map[string]any{
+			"error": map[string]any{"message": "original", "code": "c"},
+		})
+		rules := `[{"match":{},"override":{"error.message":"rewritten"}}]`
+
+		ApplyStreamErrorOverride(tree, rules)
+
+		require.Equal(t, "original", tree["error"].(map[string]any)["message"])
+	})
+}
+
 func TestEvaluateErrorOverride(t *testing.T) {
 	t.Parallel()
 

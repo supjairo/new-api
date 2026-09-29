@@ -321,6 +321,13 @@ export const channelFormSchema = z
         isOptionalErrorOverride,
         'Error override must be a JSON array of match/override rules'
       ),
+    stream_error_override: z
+      .string()
+      .optional()
+      .refine(
+        isOptionalErrorOverride,
+        'Stream error override must be a JSON array of match/override rules'
+      ),
     settings: z
       .string()
       .optional()
@@ -533,6 +540,7 @@ export const CHANNEL_FORM_DEFAULT_VALUES: ChannelFormValues = {
   param_override: '',
   header_override: '',
   error_override: '',
+  stream_error_override: '',
   settings: '{}',
   other: '',
   multi_key_mode: 'single',
@@ -721,6 +729,7 @@ export function transformChannelToFormDefaults(
     param_override: channel.param_override || '',
     header_override: channel.header_override || '',
     error_override: channel.error_override || '',
+    stream_error_override: channel.stream_error_override || '',
     settings: channel.settings || '{}',
     other: channel.other || '',
     multi_key_mode: 'single',
@@ -1011,6 +1020,7 @@ export function transformFormDataToCreatePayload(formData: ChannelFormValues): {
     param_override: formData.param_override || null,
     header_override: formData.header_override || null,
     error_override: formData.error_override || null,
+    stream_error_override: formData.stream_error_override || null,
     settings: buildSettingsJSON(formData),
     other: formData.other || '',
   }
@@ -1059,6 +1069,7 @@ export function transformFormDataToUpdatePayload(
     param_override: formData.param_override || null,
     header_override: formData.header_override || null,
     error_override: formData.error_override || null,
+    stream_error_override: formData.stream_error_override || null,
     settings: buildSettingsJSON(formData),
     other: formData.other || '',
   }
@@ -1086,6 +1097,7 @@ export function transformFormDataToUpdatePayload(
   payload.param_override = formData.param_override || ''
   payload.header_override = formData.header_override || ''
   payload.error_override = formData.error_override || ''
+  payload.stream_error_override = formData.stream_error_override || ''
 
   return payload
 }
