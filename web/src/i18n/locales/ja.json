@@ -6870,11 +6870,11 @@
     "Zhipu": "Zhipu",
     "Zhipu GLM": "Zhipu GLM",
     "Zhipu V4": "Zhipu V 4",
-    "Zoom": "ズーム"
-  },
-  "Stream Error Override": "ストリームエラー上書き",
-  "Rewrite error events inside streaming responses (e.g. upstream failure frames or silent stream aborts). Rules are matched in order; the first matching rule wins.": "ストリーミング応答内のエラーイベント（上流の失敗フレームやサイレント中断など）を書き換えます。ルールは順番に評価され、最初に一致したものが適用されます。",
-  "Configure stream error override rules as a JSON array": "ストリームエラー上書きルールを JSON 配列として設定します",
-  "Each rule has a match section and an override section using dot paths. event selects the stream event: upstream frames (response.failed, error) or the synthesized stream.aborted (with end_reason, received_events, has_errors) for silent aborts. error.* rewrites the error fields; override only touches listed paths and null deletes.": "各ルールは match と override で構成され、ドットパスを使います。event はストリームイベント（上流フレームの response.failed / error、またはサイレント中断で合成される stream.aborted：end_reason、received_events、has_errors を含む）を選択します。error.* でエラー項目を書き換え、override は列挙したパスのみ変更し、null は削除します。",
-  "Stream error override must be a JSON array of match/override rules": "ストリームエラー上書きは match/override ルールの JSON 配列である必要があります"
+    "Zoom": "ズーム",
+    "Stream Error Override": "ストリームエラー上書き",
+    "Rewrite error events inside streaming responses (e.g. upstream failure frames or silent stream aborts). Rules are matched in order; the first matching rule wins.": "ストリーミング応答内のエラーイベント（上流の失敗フレームやサイレント中断など）を書き換えます。ルールは順番に評価され、最初に一致したものが適用されます。",
+    "Configure stream error override rules as a JSON array": "ストリームエラー上書きルールを JSON 配列として設定します",
+    "Each rule has a match section and an override section using dot paths. event selects the stream event: upstream frames (response.failed, error) or the synthesized stream.aborted (with end_reason, received_events, has_errors) for silent aborts. error.* rewrites the error fields; override only touches listed paths and null deletes.": "各ルールは match と override で構成され、ドットパスを使います。event はストリームイベント（上流フレームの response.failed / error、またはサイレント中断で合成される stream.aborted：end_reason、received_events、has_errors を含む）を選択します。error.* でエラー項目を書き換え、override は列挙したパスのみ変更し、null は削除します。",
+    "Stream error override must be a JSON array of match/override rules": "ストリームエラー上書きは match/override ルールの JSON 配列である必要があります"
+  }
 }
