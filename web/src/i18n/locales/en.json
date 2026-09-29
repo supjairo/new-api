@@ -7410,5 +7410,10 @@
     "Zoom": "Zoom",
     "By clicking sign in, you agree to our": "By clicking sign in, you agree to our",
     "By creating an account, you agree to our": "By creating an account, you agree to our"
-  }
+  },
+  "Stream Error Override": "Stream Error Override",
+  "Rewrite error events inside streaming responses (e.g. upstream failure frames or silent stream aborts). Rules are matched in order; the first matching rule wins.": "Rewrite error events inside streaming responses (e.g. upstream failure frames or silent stream aborts). Rules are matched in order; the first matching rule wins.",
+  "Configure stream error override rules as a JSON array": "Configure stream error override rules as a JSON array",
+  "Each rule has a match section and an override section using dot paths. event selects the stream event: upstream frames (response.failed, error) or the synthesized stream.aborted (with end_reason, received_events, has_errors) for silent aborts. error.* rewrites the error fields; override only touches listed paths and null deletes.": "Each rule has a match section and an override section using dot paths. event selects the stream event: upstream frames (response.failed, error) or the synthesized stream.aborted (with end_reason, received_events, has_errors) for silent aborts. error.* rewrites the error fields; override only touches listed paths and null deletes.",
+  "Stream error override must be a JSON array of match/override rules": "Stream error override must be a JSON array of match/override rules"
 }
