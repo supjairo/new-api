@@ -201,7 +201,7 @@ func TestApplyErrorOverride(t *testing.T) {
 		t.Parallel()
 
 		err := openaiErr(http.StatusBadGateway, "whatever", "upstream_error", "boom")
-		rules := `[{"match":{},"override":{"http_status":200,"body":{"error":{"message":"rewritten","type":"rewritten_type","code":"rewritten_code","param":"p"}}}}]`
+		rules := `[{"match":{},"override":{"status_code":200,"error.message":"rewritten","error.type":"rewritten_type","error.code":"rewritten_code","error.param":"p"}}]`
 
 		ApplyErrorOverride(err, rules)
 
@@ -213,11 +213,11 @@ func TestApplyErrorOverride(t *testing.T) {
 		require.Equal(t, "p", got.Param)
 	})
 
-	t.Run("http_status must match", func(t *testing.T) {
+	t.Run("status_code must match", func(t *testing.T) {
 		t.Parallel()
 
 		err := openaiErr(http.StatusServiceUnavailable, "x", "y", "boom")
-		rules := `[{"match":{"http_status":500},"override":{"body":{"error":{"message":"should not fire"}}}}]`
+		rules := `[{"match":{"status_code":500},"override":{"error.message":"should not fire"}}]`
 
 		ApplyErrorOverride(err, rules)
 
@@ -227,7 +227,7 @@ func TestApplyErrorOverride(t *testing.T) {
 	t.Run("local gateway errors are never rewritten", func(t *testing.T) {
 		t.Parallel()
 
-		rules := `[{"match":{},"override":{"http_status":500,"body":{"error":{"message":"服务繁忙，请稍后再试","code":"server_busy"}}}}]`
+		rules := `[{"match":{},"override":{"status_code":500,"error.message":"服务繁忙，请稍后再试","error.code":"server_busy"}}]`
 
 		// Mirrors relay/request_billing.go: plain local error via NewError.
 		localErr := types.NewError(fmt.Errorf("count token failed"), types.ErrorCodeCountTokenFailed)
@@ -250,7 +250,7 @@ func TestApplyErrorOverride(t *testing.T) {
 		t.Parallel()
 
 		err := openaiErr(http.StatusServiceUnavailable, "smart_route_no_active_candidates", "y", "boom")
-		rules := `[{"match":{"code":"other_code"},"override":{"body":{"error":{"message":"should not fire"}}}}]`
+		rules := `[{"match":{"code":"other_code"},"override":{"error.message":"should not fire"}}}]`
 
 		ApplyErrorOverride(err, rules)
 
@@ -261,7 +261,7 @@ func TestApplyErrorOverride(t *testing.T) {
 		t.Parallel()
 
 		err := openaiErr(http.StatusServiceUnavailable, "x", "new_api_error", "boom")
-		rules := `[{"match":{"type":"invalid_request_error"},"override":{"body":{"error":{"message":"should not fire"}}}}]`
+		rules := `[{"match":{"type":"invalid_request_error"},"override":{"error.message":"should not fire"}}}]`
 
 		ApplyErrorOverride(err, rules)
 
@@ -272,7 +272,7 @@ func TestApplyErrorOverride(t *testing.T) {
 		t.Parallel()
 
 		err := openaiErr(http.StatusServiceUnavailable, "smart_route_no_active_candidates", "new_api_error", "boom")
-		rules := `[{"match":{"http_status":503,"code":"smart_route_no_active_candidates","type":"new_api_error"},"override":{"http_status":200,"body":{"error":{"message":"pool busy"}}}}]`
+		rules := `[{"match":{"status_code":503,"error.code":"smart_route_no_active_candidates","error.type":"new_api_error"},"override":{"status_code":200,"error.message":"pool busy"}}]`
 
 		ApplyErrorOverride(err, rules)
 
@@ -285,8 +285,8 @@ func TestApplyErrorOverride(t *testing.T) {
 
 		err := openaiErr(http.StatusServiceUnavailable, "c", "t", "boom")
 		rules := `[
-			{"match":{"http_status":503},"override":{"body":{"error":{"message":"first"}}}},
-			{"match":{"http_status":503},"override":{"body":{"error":{"message":"second"}}}}
+			{"match":{"status_code":503},"override":{"error.message":"first"}},
+			{"match":{"status_code":503},"override":{"error.message":"second"}}
 		]`
 
 		ApplyErrorOverride(err, rules)
@@ -299,8 +299,8 @@ func TestApplyErrorOverride(t *testing.T) {
 
 		err := openaiErr(http.StatusServiceUnavailable, "different_code", "t", "boom")
 		rules := `[
-			{"match":{"code":"smart_route_no_active_candidates"},"override":{"body":{"error":{"message":"specific"}}}},
-			{"match":{"http_status":503},"override":{"body":{"error":{"message":"fallback"}}}}
+			{"match":{"error.code":"smart_route_no_active_candidates"},"override":{"error.message":"specific"}},
+			{"match":{"status_code":503},"override":{"error.message":"fallback"}}
 		]`
 
 		ApplyErrorOverride(err, rules)
@@ -312,7 +312,7 @@ func TestApplyErrorOverride(t *testing.T) {
 		t.Parallel()
 
 		err := openaiErr(http.StatusServiceUnavailable, "orig_code", "orig_type", "orig_message")
-		rules := `[{"match":{"http_status":503},"override":{"body":{"error":{"message":"only message rewritten"}}}}]`
+		rules := `[{"match":{"status_code":503},"override":{"error.message":"only message rewritten"}}]`
 
 		ApplyErrorOverride(err, rules)
 
@@ -327,7 +327,7 @@ func TestApplyErrorOverride(t *testing.T) {
 		t.Parallel()
 
 		err := openaiErr(http.StatusServiceUnavailable, "c", "t", "original")
-		rules := `[{"match":{"http_status":503},"override":{"body":{"error":{"message":"rewritten"}}}}]`
+		rules := `[{"match":{"status_code":503},"override":{"error.message":"rewritten"}}]`
 
 		ApplyErrorOverride(err, rules)
 
@@ -342,7 +342,7 @@ func TestApplyErrorOverride(t *testing.T) {
 			Message: "claude boom",
 			Type:    "upstream_error",
 		}, http.StatusServiceUnavailable)
-		rules := `[{"match":{"http_status":503},"override":{"body":{"error":{"message":"claude rewritten","type":"rewritten_type","code":"should_be_ignored","param":"ignored"}}}}]`
+		rules := `[{"match":{"status_code":503},"override":{"error.message":"claude rewritten","error.type":"rewritten_type","error.code":"should_be_ignored","error.param":"ignored"}}]`
 
 		ApplyErrorOverride(err, rules)
 
@@ -358,18 +358,18 @@ func TestApplyErrorOverride(t *testing.T) {
 			Message: "claude boom",
 			Type:    "permission_error",
 		}, http.StatusUnauthorized)
-		rules := `[{"match":{"type":"permission_error"},"override":{"body":{"error":{"message":"matched"}}}}]`
+		rules := `[{"match":{"error.type":"permission_error"},"override":{"error.message":"matched"}}]`
 
 		ApplyErrorOverride(err, rules)
 
 		require.Equal(t, "matched", err.ToClaudeError().Message)
 	})
 
-	t.Run("override http_status of zero is valid", func(t *testing.T) {
+	t.Run("override status_code of zero is valid", func(t *testing.T) {
 		t.Parallel()
 
 		err := openaiErr(http.StatusServiceUnavailable, "c", "t", "boom")
-		rules := `[{"match":{"http_status":503},"override":{"http_status":200}}]`
+		rules := `[{"match":{"status_code":503},"override":{"status_code":200}}]`
 
 		ApplyErrorOverride(err, rules)
 
@@ -380,9 +380,48 @@ func TestApplyErrorOverride(t *testing.T) {
 		t.Parallel()
 
 		err := openaiErr(http.StatusServiceUnavailable, "c", "t", "boom")
-		// Marshal a rule with http_status=0 by hand to verify that the pointer
-		// is honoured when explicitly provided.
-		rules := `[{"match":{"http_status":0},"override":{"body":{"error":{"message":"should not fire"}}}}]`
+		// Match status_code=0 never equals a real error status.
+		rules := `[{"match":{"status_code":0},"override":{"error.message":"should not fire"}}]`
+
+		ApplyErrorOverride(err, rules)
+
+		require.Equal(t, "boom", err.ToOpenAIError().Message)
+	})
+
+	t.Run("generic paths rewrite any field and keep the rest", func(t *testing.T) {
+		t.Parallel()
+
+		err := openaiErr(http.StatusBadGateway, "stream_disconnected", "upstream_error", "stream disconnected before completion")
+		rules := `[{"match":{"status_code":502,"error.code":"stream_disconnected"},"override":{"status_code":429,"error.message":"服务繁忙，请稍后再试","error.code":"server_busy"}}]`
+
+		ApplyErrorOverride(err, rules)
+
+		got := err.ToOpenAIError()
+		require.Equal(t, http.StatusTooManyRequests, err.StatusCode)
+		require.Equal(t, "服务繁忙，请稍后再试", got.Message)
+		require.Equal(t, "server_busy", got.Code)
+		// Fields not mentioned in override pass through unchanged.
+		require.Equal(t, "upstream_error", got.Type)
+		require.Empty(t, got.Param)
+	})
+
+	t.Run("override null deletes a field", func(t *testing.T) {
+		t.Parallel()
+
+		err := openaiErr(http.StatusServiceUnavailable, "c", "t", "boom")
+		rules := `[{"match":{},"override":{"error.param":null}}]`
+
+		ApplyErrorOverride(err, rules)
+
+		require.Equal(t, http.StatusServiceUnavailable, err.StatusCode)
+		require.Equal(t, "boom", err.ToOpenAIError().Message)
+	})
+
+	t.Run("match on a missing path only equals null", func(t *testing.T) {
+		t.Parallel()
+
+		err := openaiErr(http.StatusServiceUnavailable, "c", "t", "boom")
+		rules := `[{"match":{"error.nonexistent":"x"},"override":{"error.message":"should not fire"}}]`
 
 		ApplyErrorOverride(err, rules)
 
@@ -399,7 +438,7 @@ func TestEvaluateErrorOverride(t *testing.T) {
 		err := types.WithOpenAIError(types.OpenAIError{Message: "boom", Type: "y", Code: "x"}, http.StatusServiceUnavailable)
 		require.Nil(t, evaluateErrorOverride(err, ""))
 		require.Nil(t, evaluateErrorOverride(err, "not json"))
-		require.Nil(t, evaluateErrorOverride(err, `[{"match":{"http_status":500},"override":{"body":{"error":{"message":"m"}}}}]`))
+		require.Nil(t, evaluateErrorOverride(err, `[{"match":{"status_code":500},"override":{"error.message":"m"}}]`))
 	})
 
 	t.Run("audit keeps the masked original and the overridden result", func(t *testing.T) {
@@ -410,7 +449,7 @@ func TestEvaluateErrorOverride(t *testing.T) {
 			Type:    "invalid_request_error",
 			Code:    "invalid_api_key",
 		}, http.StatusUnauthorized)
-		rules := `[{"match":{},"override":{"http_status":429,"body":{"error":{"message":"当前分组上游负载已饱和，请稍后再试","type":"rate_limit_error","code":"rate_limited"}}}}]`
+		rules := `[{"match":{},"override":{"status_code":429,"error.message":"当前分组上游负载已饱和，请稍后再试","error.type":"rate_limit_error","error.code":"rate_limited"}}]`
 
 		audit := evaluateErrorOverride(err, rules)
 
@@ -434,7 +473,7 @@ func TestEvaluateErrorOverride(t *testing.T) {
 		t.Parallel()
 
 		err := types.WithClaudeError(types.ClaudeError{Type: "invalid_request_error", Message: "bad body"}, http.StatusBadRequest)
-		rules := `[{"match":{},"override":{"body":{"error":{"message":"请求参数有误","code":"rewritten_code","param":"p"}}}}]`
+		rules := `[{"match":{},"override":{"error.message":"请求参数有误","error.code":"rewritten_code","error.param":"p"}}]`
 
 		audit := evaluateErrorOverride(err, rules)
 
@@ -477,7 +516,7 @@ func TestErrorOverrideAuditReachesErrorLog(t *testing.T) {
 	user := &model.User{Username: "override-audit", Role: common.RoleCommonUser, Status: common.UserStatusEnabled}
 	require.NoError(t, database.Create(user).Error)
 
-	rules := `[{"match":{"http_status":401},"override":{"http_status":429,"body":{"error":{"message":"服务繁忙，请稍后再试"}}}}]`
+	rules := `[{"match":{"status_code":401},"override":{"status_code":429,"error.message":"服务繁忙，请稍后再试"}}]`
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
 	c.Set("id", user.Id)
@@ -520,4 +559,9 @@ func TestErrorOverrideAuditReachesErrorLog(t *testing.T) {
 	assert.Equal(t, http.StatusTooManyRequests, first.Overridden.Status)
 	assert.Equal(t, "服务繁忙，请稍后再试", first.Overridden.Message)
 	assert.Nil(t, readAudit(logs[1].Other), "an unmatched error leaves no override audit")
+
+	// The log content mirrors what the client receives: the overridden error
+	// for a matched rule, the raw upstream error otherwise.
+	assert.Equal(t, "status_code=429, 服务繁忙，请稍后再试", logs[0].Content)
+	assert.Equal(t, "status_code=500, internal boom", logs[1].Content)
 }
