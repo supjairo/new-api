@@ -2658,7 +2658,7 @@
     "footer.columns.related.links.oneApi": "One API",
     "footer.columns.related.title": "Các Dự Án Liên Quan",
     "footer.defaultCopyright": "Bản quyền được bảo lưu.",
-    "footer.new\u0061pi.projectAttributionSuffix": "Bản quyền được bảo lưu. Được thiết kế và phát triển bởi các cộng tác viên dự án.",
+    "footer.newapi.projectAttributionSuffix": "Bản quyền được bảo lưu. Được thiết kế và phát triển bởi các cộng tác viên dự án.",
     "For advanced custom channels this applies only to /v1/responses routes without protocol conversion.": "Với kênh tùy chỉnh nâng cao, thiết lập này chỉ áp dụng cho các route /v1/responses không chuyển đổi giao thức.",
     "For channels added after May 10, 2025, no need to remove \".\" from model names during deployment": "Đối với các kênh được thêm sau ngày 10 tháng 5 năm 2025, không cần loại bỏ \".\" khỏi tên mô hình trong quá trình triển khai",
     "For private deployments, format: https://fastgpt.run/api/openapi": "Đối với các triển khai riêng tư, định dạng: https://fastgpt.run/api/openapi",
@@ -6871,5 +6871,10 @@
     "Zhipu GLM": "Zhipu GLM",
     "Zhipu V4": "Zhipu V4",
     "Zoom": "Zoom"
-  }
+  },
+  "Stream Error Override": "Ghi đè lỗi luồng",
+  "Rewrite error events inside streaming responses (e.g. upstream failure frames or silent stream aborts). Rules are matched in order; the first matching rule wins.": "Ghi đè các sự kiện lỗi trong phản hồi streaming (như khung lỗi từ thượng nguồn hoặc ngắt luồng im lặng). Quy tắc được đối sánh theo thứ tự; quy tắc khớp đầu tiên được áp dụng.",
+  "Configure stream error override rules as a JSON array": "Cấu hình các quy tắc ghi đè lỗi luồng dưới dạng mảng JSON",
+  "Each rule has a match section and an override section using dot paths. event selects the stream event: upstream frames (response.failed, error) or the synthesized stream.aborted (with end_reason, received_events, has_errors) for silent aborts. error.* rewrites the error fields; override only touches listed paths and null deletes.": "Mỗi quy tắc gồm phần match và override dùng đường dẫn chấm. event chọn sự kiện luồng: khung thượng nguồn (response.failed, error) hoặc stream.aborted tổng hợp (kèm end_reason, received_events, has_errors) cho ngắt luồng im lặng. error.* ghi đè các trường lỗi; override chỉ đổi các đường dẫn được liệt kê, null là xóa.",
+  "Stream error override must be a JSON array of match/override rules": "Ghi đè lỗi luồng phải là một mảng JSON gồm các quy tắc match/override"
 }

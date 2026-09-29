@@ -2658,7 +2658,7 @@
     "footer.columns.related.links.oneApi": "One API",
     "footer.columns.related.title": "相关项目",
     "footer.defaultCopyright": "版权所有。",
-    "footer.new\u0061pi.projectAttributionSuffix": "版权所有，由项目贡献者设计与开发。",
+    "footer.newapi.projectAttributionSuffix": "版权所有，由项目贡献者设计与开发。",
     "For advanced custom channels this applies only to /v1/responses routes without protocol conversion.": "高级自定义渠道仅对 /v1/responses 且不做协议转换的路由生效。",
     "For channels added after May 10, 2025, no need to remove \".\" from model names during deployment": "对于 2025 年 5 月 10 日之后添加的渠道，在部署时无需从模型名称中移除 \".\"",
     "For private deployments, format: https://fastgpt.run/api/openapi": "对于私有部署，格式为：https://fastgpt.run/api/openapi",
@@ -6871,5 +6871,10 @@
     "Zhipu GLM": "智谱GLM",
     "Zhipu V4": "智谱 V4",
     "Zoom": "缩放"
-  }
+  },
+  "Stream Error Override": "流错误覆盖",
+  "Rewrite error events inside streaming responses (e.g. upstream failure frames or silent stream aborts). Rules are matched in order; the first matching rule wins.": "改写流式响应中的错误事件（如上游失败帧或静默断流）。规则按顺序匹配，先命中先生效。",
+  "Configure stream error override rules as a JSON array": "以 JSON 数组形式配置流错误覆盖规则",
+  "Each rule has a match section and an override section using dot paths. event selects the stream event: upstream frames (response.failed, error) or the synthesized stream.aborted (with end_reason, received_events, has_errors) for silent aborts. error.* rewrites the error fields; override only touches listed paths and null deletes.": "每条规则由 match 和 override 组成，均用点路径。event 选择流事件：上游帧（response.failed、error）或网关为静默断流合成的 stream.aborted（含 end_reason、received_events、has_errors）。error.* 改写错误字段；override 只改列出的路径，null 表示删除。",
+  "Stream error override must be a JSON array of match/override rules": "流错误覆盖必须是 match/override 规则组成的 JSON 数组"
 }

@@ -191,9 +191,64 @@ func OaiStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Re
 		info.CountBillableToolCall(dto.BuildInCallFunctionCall, name)
 	}
 
+	maybeSendStreamAbortFrame(c, info)
+
 	HandleFinalResponse(c, info, lastStreamData, responseId, createAt, model, systemFingerprint, usage, containStreamUsage)
 
 	return usage, nil
+}
+
+// maybeSendStreamAbortFrame notifies the client about a stream that ended
+// without a proper terminal ([DONE] missing / no finish reason). The channel's
+// stream error override rules decide whether an error frame is sent and what
+// it contains; without a matching rule the stream keeps its silent ending.
+// It only shapes the client-facing stream and never touches billing or retry.
+func maybeSendStreamAbortFrame(c *gin.Context, info *relaycommon.RelayInfo) {
+	status := info.StreamStatus
+	if status == nil || status.IsNormalEnd() {
+		return
+	}
+	// A stream the protocol marked explicitly (completed / failed / ...)
+	// already carried its terminal event; only silent aborts get the frame.
+	if status.ResponseOutcome() != "" {
+		return
+	}
+	rulesStr := service.PrepareStreamErrorOverrideRules(c)
+	if rulesStr == "" {
+		return
+	}
+	outcome := status.OutcomeSnapshot()
+	tree := service.StreamAbortEvent(string(outcome.EndReason), info.ReceivedResponseCount, outcome.HasErrors)
+	rewritten := service.ApplyStreamErrorOverride(tree, rulesStr)
+	if rewritten == nil {
+		return
+	}
+	message, _ := rewritten["error.message"].(string)
+	if message == "" {
+		message, _ = rewritten["error"].(map[string]any)["message"].(string)
+	}
+	if message == "" {
+		return
+	}
+	code, _ := rewritten["error.code"].(string)
+	frame := map[string]any{
+		"error": map[string]any{
+			"message": message,
+			"type":    "stream_aborted",
+			"code":    code,
+		},
+	}
+	if rawErr, ok := rewritten["error"].(map[string]any); ok {
+		if t, ok := rawErr["type"].(string); ok && t != "" {
+			frame["error"].(map[string]any)["type"] = t
+		}
+	}
+	payload, err := common.Marshal(frame)
+	if err != nil {
+		return
+	}
+	logger.LogInfo(c, "stream error override sent abort frame: end_reason="+string(outcome.EndReason))
+	_ = helper.StringData(c, string(payload))
 }
 
 // observeStreamChoices collects billable function call names and records the
