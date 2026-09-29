@@ -2871,31 +2871,22 @@ export function ChannelMutateDrawer({
                       field.onChange(
                         JSON.stringify(
                           [
-                                            {
+                            {
                               match: {
-                                http_status: 503,
-                                code: 'smart_route_no_active_candidates',
+                                status_code: 503,
+                                'error.code': 'smart_route_no_active_candidates',
                               },
                               override: {
-                                http_status: 200,
-                                body: {
-                                  error: {
-                                    message:
-                                      '智能路由池当前无可用商家，请稍后再试',
-                                    type: 'service_unavailable',
-                                    code: 'upstream_no_provider',
-                                  },
-                                },
+                                status_code: 200,
+                                'error.message': '智能路由池当前无可用商家，请稍后再试',
+                                'error.type': 'service_unavailable',
+                                'error.code': 'upstream_no_provider',
                               },
                             },
                             {
-                              match: { http_status: 503 },
+                              match: { status_code: 503 },
                               override: {
-                                body: {
-                                  error: {
-                                    message: '上游服务异常，请稍后重试或切换分组',
-                                  },
-                                },
+                                'error.message': '上游服务异常，请稍后重试或切换分组',
                               },
                             },
                           ],
@@ -2933,7 +2924,7 @@ export function ChannelMutateDrawer({
               </FormControl>
               <FormDescription className='text-xs'>
                 {t(
-                  'Each rule has a match section (http_status, code, type — all optional) and an override section (http_status plus body.error with message, type, code, param — all optional). Fields left empty are not modified.'
+                  'Each rule has a match section and an override section. Both use dot paths on the outgoing error: status_code for the HTTP status (e.g. 503) and error.* for body fields (error.message, error.code, deeper paths allowed). Override rewrites only the paths it lists; set a path to null to delete it.'
                 )}
               </FormDescription>
               <FormMessage />

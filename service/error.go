@@ -8,6 +8,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -240,134 +241,244 @@ func TaskErrorFromAPIError(apiErr *types.NewAPIError) *taskdto.TaskError {
 // the gateway's internal retry / disable / billing logic still sees the
 // original upstream status.
 //
-// The wire-format JSON for this configuration is a top-level array of rules:
+// The engine treats the outgoing error as a generic JSON tree:
+//
+//	{ "status_code": 503, "error": { "message": "...", "type": "...", "code": "...", "param": "..." } }
+//
+// match and override address that tree with dot paths, so any upstream field
+// can be matched and any field can be rewritten; paths not mentioned in
+// override are returned to the client unchanged. The wire-format JSON is a
+// top-level array of rules:
 //
 //	[
-//	  { "match": {...}, "override": {...} },
+//	  { "match": { "status_code": 503, "error.code": "x" },
+//	    "override": { "error.message": "服务繁忙", "status_code": 429 } },
 //	  ...
 //	]
 type ErrorOverrideRule struct {
-	Match    ErrorOverrideMatch    `json:"match"`
-	Override ErrorOverrideOverride `json:"override"`
+	Match    map[string]any `json:"match"`
+	Override map[string]any `json:"override"`
 }
 
-// ErrorOverrideMatch narrows when the rule fires. Every field is optional;
-// fields left empty are treated as "always match". A rule with all fields
-// empty matches every error.
-type ErrorOverrideMatch struct {
-	HTTPStatus *int   `json:"http_status,omitempty"`
-	Code       string `json:"code,omitempty"`
-	Type       string `json:"type,omitempty"`
-}
-
-// ErrorOverrideOverride describes the new values for the wire fields. Any
-// field left empty / nil is left alone.
-type ErrorOverrideOverride struct {
-	HTTPStatus *int                  `json:"http_status,omitempty"`
-	Body       ErrorOverrideBodySpec `json:"body,omitempty"`
-}
-
-type ErrorOverrideBodySpec struct {
-	Error ErrorOverrideErrorSpec `json:"error,omitempty"`
-}
-
-type ErrorOverrideErrorSpec struct {
-	Message string `json:"message,omitempty"`
-	Type    string `json:"type,omitempty"`
-	Code    string `json:"code,omitempty"`
-	Param   string `json:"param,omitempty"`
-}
-
-// ApplyErrorOverride inspects err against rulesStr (the channel's
-// ErrorOverride JSON) and, on the first matching rule, mutates err to carry
-// the override values. It is safe to call with an empty rulesStr, a nil err,
-// or malformed JSON — in all of these cases the function is a no-op.
-func ApplyErrorOverride(err *types.NewAPIError, rulesStr string) {
-	if err == nil {
-		return
-	}
-	if rulesStr == "" || rulesStr == "{}" || rulesStr == "[]" {
-		return
-	}
-	var rules []ErrorOverrideRule
-	if uerr := common.Unmarshal([]byte(rulesStr), &rules); uerr != nil {
-		return
-	}
-	if len(rules) == 0 {
-		return
-	}
-	for i := range rules {
-		if !errorOverrideRuleMatches(err, &rules[i].Match) {
-			continue
+// errorOverrideTree renders err as the generic JSON tree that match/override
+// paths address: the wire error under "error" and the status under
+// "status_code".
+func errorOverrideTree(err *types.NewAPIError) map[string]any {
+	tree := map[string]any{"status_code": err.StatusCode}
+	switch relayErr := err.RelayError.(type) {
+	case types.OpenAIError:
+		wire := map[string]any{
+			"message": relayErr.Message,
+			"type":    relayErr.Type,
+			"param":   relayErr.Param,
 		}
-		applyErrorOverride(err, &rules[i].Override)
-		return
-	}
-}
-
-func errorOverrideRuleMatches(err *types.NewAPIError, m *ErrorOverrideMatch) bool {
-	// Only upstream-originated errors are eligible for override. Local
-	// gateway errors (quota, validation, routing, ...) always carry the
-	// new_api_error type and must keep their messages for the client.
-	if err.GetErrorType() == types.ErrorTypeNewAPIError {
-		return false
-	}
-	if m == nil {
-		return true
-	}
-	if m.HTTPStatus != nil && err.StatusCode != *m.HTTPStatus {
-		return false
-	}
-	if m.Code != "" {
-		if wireErrorCode(err) != m.Code {
-			return false
+		switch code := relayErr.Code.(type) {
+		case string:
+			wire["code"] = code
+		case nil:
+		default:
+			wire["code"] = fmt.Sprintf("%v", code)
+		}
+		tree["error"] = wire
+	case types.ClaudeError:
+		tree["error"] = map[string]any{
+			"message": relayErr.Message,
+			"type":    relayErr.Type,
+		}
+	default:
+		tree["error"] = map[string]any{
+			"message": err.Error(),
+			"type":    string(err.GetErrorType()),
+			"code":    string(err.GetErrorCode()),
 		}
 	}
-	if m.Type != "" {
-		if wireErrorType(err) != m.Type {
+	return tree
+}
+
+// errorOverridePath resolves a dot path like "error.message" inside tree,
+// creating intermediate maps along the way when create is true. Parent
+// segments must be objects; addressing into arrays or scalars returns nil.
+func errorOverridePath(tree map[string]any, path string, create bool) any {
+	parts := strings.Split(path, ".")
+	if len(parts) == 0 || path == "" {
+		return nil
+	}
+	current := tree
+	for i, part := range parts {
+		if part == "" {
+			return nil
+		}
+		if i == len(parts)-1 {
+			if !create {
+				return current[part]
+			}
+			return current[part]
+		}
+		child, ok := current[part].(map[string]any)
+		if !ok {
+			if !create {
+				return nil
+			}
+			if current[part] != nil {
+				// Existing non-object value blocks descent.
+				return nil
+			}
+			child = map[string]any{}
+			current[part] = child
+		}
+		current = child
+	}
+	return nil
+}
+
+// errorOverrideRuleMatches reports whether every match path equals the value
+// currently in the tree. A missing path only matches a null match value.
+func errorOverrideRuleMatches(tree map[string]any, match map[string]any) bool {
+	for path, want := range match {
+		got := errorOverridePath(tree, path, false)
+		if !reflect.DeepEqual(normalizeOverrideValue(got), normalizeOverrideValue(want)) {
 			return false
 		}
 	}
 	return true
 }
 
-func applyErrorOverride(err *types.NewAPIError, o *ErrorOverrideOverride) {
-	if o == nil {
-		return
+// normalizeOverrideValue converts JSON-decoded numbers (float64) to int when
+// whole so that status codes compare naturally across config shapes.
+func normalizeOverrideValue(v any) any {
+	switch value := v.(type) {
+	case float64:
+		if value == math.Trunc(value) && !math.IsInf(value, 0) {
+			return int(value)
+		}
+	case json.Number:
+		if i, err := value.Int64(); err == nil {
+			return int(i)
+		}
 	}
-	if o.HTTPStatus != nil {
-		err.StatusCode = *o.HTTPStatus
-	}
-	spec := o.Body.Error
-	patch := types.WireErrorPatch{}
-	if spec.Message != "" {
-		patch.Message = &spec.Message
-	}
-	if spec.Type != "" {
-		patch.Type = &spec.Type
-	}
-	if spec.Code != "" {
-		patch.Code = &spec.Code
-	}
-	if spec.Param != "" {
-		patch.Param = &spec.Param
-	}
-	if patch.Message != nil || patch.Type != nil || patch.Code != nil || patch.Param != nil {
-		err.OverrideWireFields(patch)
+	return v
+}
+
+// applyErrorOverrideTree writes every override path into the tree. A nil
+// value deletes the target field, mirroring "not part of the response".
+// Paths are dot-separated ("status_code", "error.message", ...).
+func applyErrorOverrideTree(tree map[string]any, override map[string]any) {
+	for path, value := range override {
+		parts := strings.Split(path, ".")
+		if len(parts) == 0 || path == "" {
+			continue
+		}
+		parent := tree
+		blocked := false
+		for _, part := range parts[:len(parts)-1] {
+			if part == "" {
+				blocked = true
+				break
+			}
+			child, ok := parent[part].(map[string]any)
+			if !ok {
+				if parent[part] != nil {
+					blocked = true
+					break
+				}
+				child = map[string]any{}
+				parent[part] = child
+			}
+			parent = child
+		}
+		if blocked || parts[len(parts)-1] == "" {
+			continue
+		}
+		key := parts[len(parts)-1]
+		if value == nil {
+			delete(parent, key)
+		} else {
+			parent[key] = value
+		}
 	}
 }
 
-// wireErrorType extracts the user-visible "type" field of the underlying
-// wire-format error. Falls back to the NewAPIError's internal error type
-// when the payload does not carry one.
-func wireErrorType(err *types.NewAPIError) string {
-	switch relayErr := err.RelayError.(type) {
-	case types.OpenAIError:
-		return relayErr.Type
-	case types.ClaudeError:
-		return relayErr.Type
+// ApplyErrorOverride inspects err against rulesStr (the channel's
+// ErrorOverride JSON) and, on the first matching rule, rewrites the wire
+// fields of err in place. It is safe to call with an empty rulesStr, a nil
+// err, or malformed JSON — in all of these cases the function is a no-op.
+// Only upstream-originated errors are eligible; local gateway errors keep
+// their messages.
+func ApplyErrorOverride(err *types.NewAPIError, rulesStr string) {
+	if err == nil {
+		return
 	}
-	return string(err.GetErrorType())
+	if err.GetErrorType() == types.ErrorTypeNewAPIError {
+		return
+	}
+	rules, ok := parseErrorOverrideRules(rulesStr)
+	if !ok {
+		return
+	}
+	tree := errorOverrideTree(err)
+	for i := range rules {
+		if !errorOverrideRuleMatches(tree, rules[i].Match) {
+			continue
+		}
+		if len(rules[i].Override) > 0 {
+			applyErrorOverrideTree(tree, rules[i].Override)
+			restoreErrorOverrideTree(err, tree)
+		}
+		return
+	}
+}
+
+// parseErrorOverrideRules decodes the rules array. The bool is false when
+// rulesStr holds no usable rules.
+func parseErrorOverrideRules(rulesStr string) ([]ErrorOverrideRule, bool) {
+	if rulesStr == "" || rulesStr == "{}" || rulesStr == "[]" {
+		return nil, false
+	}
+	var rules []ErrorOverrideRule
+	if uerr := common.Unmarshal([]byte(rulesStr), &rules); uerr != nil {
+		return nil, false
+	}
+	for i := range rules {
+		if rules[i].Match == nil {
+			rules[i].Match = map[string]any{}
+		}
+		if rules[i].Override == nil {
+			rules[i].Override = map[string]any{}
+		}
+	}
+	return rules, len(rules) > 0
+}
+
+// restoreErrorOverrideTree writes the rewritten tree back into err's wire
+// error, keeping the wire structs authoritative for serialization.
+func restoreErrorOverrideTree(err *types.NewAPIError, tree map[string]any) {
+	if status, ok := normalizeOverrideValue(tree["status_code"]).(int); ok && status > 0 && status < 600 {
+		err.StatusCode = status
+	}
+	wire, _ := tree["error"].(map[string]any)
+	if wire == nil {
+		return
+	}
+	patch := types.WireErrorPatch{}
+	setIf := func(field string, dst **string) {
+		if raw, present := wire[field]; present {
+			if raw == nil {
+				empty := ""
+				*dst = &empty
+				return
+			}
+			if text, ok := raw.(string); ok {
+				*dst = &text
+			}
+		}
+	}
+	setIf("message", &patch.Message)
+	setIf("type", &patch.Type)
+	setIf("code", &patch.Code)
+	setIf("param", &patch.Param)
+	if patch.Message != nil || patch.Type != nil || patch.Code != nil || patch.Param != nil {
+		err.OverrideWireFields(patch)
+	}
 }
 
 // wireErrorCode extracts the user-visible "code" field of the underlying
@@ -430,35 +541,36 @@ func wireErrorSnapshot(err *types.NewAPIError) ErrorOverrideSnapshot {
 // for the first matching rule without mutating err. It returns nil when no
 // rule matches or the rules are absent or malformed.
 func evaluateErrorOverride(err *types.NewAPIError, rulesStr string) *ErrorOverrideAudit {
-	if err == nil || rulesStr == "" || rulesStr == "{}" || rulesStr == "[]" {
+	if err == nil || err.GetErrorType() == types.ErrorTypeNewAPIError {
 		return nil
 	}
-	var rules []ErrorOverrideRule
-	if uerr := common.Unmarshal([]byte(rulesStr), &rules); uerr != nil {
+	rules, ok := parseErrorOverrideRules(rulesStr)
+	if !ok {
 		return nil
 	}
+	tree := errorOverrideTree(err)
 	for i := range rules {
-		if !errorOverrideRuleMatches(err, &rules[i].Match) {
+		if !errorOverrideRuleMatches(tree, rules[i].Match) {
 			continue
 		}
 		original := wireErrorSnapshot(err)
 		original.Message = common.MaskSensitiveInfo(original.Message)
 		overridden := original
-		if o := &rules[i].Override; o.HTTPStatus != nil {
-			overridden.Status = *o.HTTPStatus
+		// Replay the rewrite on a copy of the full tree so paths like
+		// "status_code" and "error.message" land exactly as they would for
+		// the real response, then read the wire fields back.
+		rewritten := map[string]any{"status_code": tree["status_code"], "error": map[string]any{}}
+		for k, v := range tree["error"].(map[string]any) {
+			rewritten["error"].(map[string]any)[k] = v
 		}
-		spec := rules[i].Override.Body.Error
-		if spec.Message != "" {
-			overridden.Message = spec.Message
-		}
-		if spec.Type != "" {
-			overridden.Type = spec.Type
-		}
-		if spec.Code != "" {
-			overridden.Code = spec.Code
-		}
-		if spec.Param != "" {
-			overridden.Param = spec.Param
+		applyErrorOverrideTree(rewritten, rules[i].Override)
+		wire, _ := rewritten["error"].(map[string]any)
+		overridden.Message, _ = wire["message"].(string)
+		overridden.Type, _ = wire["type"].(string)
+		overridden.Code, _ = wire["code"].(string)
+		overridden.Param, _ = wire["param"].(string)
+		if status, ok := normalizeOverrideValue(rewritten["status_code"]).(int); ok {
+			overridden.Status = status
 		}
 		// Claude wire errors carry neither code nor param, so OverrideWireFields
 		// silently drops both there — the audit must not record them either.

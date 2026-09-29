@@ -171,19 +171,18 @@ function isValidHttpStatus(value: unknown): boolean {
 }
 
 // isOptionalErrorOverride validates the channel-level error override config.
-// Shape:
+// Shape (generic dot paths addressing the outgoing error tree):
 //   [
 //     {
-//       "match":    { "http_status"?: number, "code"?: string, "type"?: string },
-//       "override": {
-//         "http_status"?: number,
-//         "body"?: { "error"?: { "message"?: string, "type"?: string, "code"?: string, "param"?: string } }
-//       }
+//       "match":    { "status_code"?: number, "error.code"?: string, "<any.path>"?: any, ... },
+//       "override": { "status_code"?: number, "error.message"?: string | null, "<any.path>"?: any, ... }
 //     },
 //     ...
 //   ]
-// Empty string / empty array / undefined all pass. Anything that is not a
-// JSON array of objects with the above shape fails.
+// Paths are dot-separated; "status_code" addresses the HTTP status and every
+// other path addresses a field of the error body ("error.code", deeper paths
+// allowed). A null override value deletes the target field. Empty string /
+// empty array / undefined all pass.
 function isOptionalErrorOverride(value: string | undefined): boolean {
   try {
     const parsed = parseOptionalJson(value)
@@ -198,44 +197,32 @@ function isOptionalErrorOverride(value: string | undefined): boolean {
       if (!isJsonObjectValue(match) || !isJsonObjectValue(override)) {
         return false
       }
-      const m = match as Record<string, unknown>
-      const o = override as Record<string, unknown>
-      if (m.http_status !== undefined && !isValidHttpStatus(m.http_status)) {
-        return false
-      }
-      if (m.code !== undefined && typeof m.code !== 'string') return false
-      if (m.type !== undefined && typeof m.type !== 'string') return false
-      if (o.http_status !== undefined && !isValidHttpStatus(o.http_status)) {
-        return false
-      }
-      if (o.body !== undefined) {
-        if (!isJsonObjectValue(o.body)) return false
-        const body = o.body as Record<string, unknown>
-        if (body.error !== undefined) {
-          if (!isJsonObjectValue(body.error)) return false
-          const errSpec = body.error as Record<string, unknown>
-          if (
-            errSpec.message !== undefined &&
-            typeof errSpec.message !== 'string'
-          ) {
-            return false
-          }
-          if (errSpec.type !== undefined && typeof errSpec.type !== 'string') {
-            return false
-          }
-          if (errSpec.code !== undefined && typeof errSpec.code !== 'string') {
-            return false
-          }
-          if (errSpec.param !== undefined && typeof errSpec.param !== 'string') {
-            return false
-          }
-        }
-      }
-      return true
+      return (
+        isOverrideSection(match as Record<string, unknown>) &&
+        isOverrideSection(override as Record<string, unknown>)
+      )
     })
   } catch {
     return false
   }
+}
+
+function isOverrideSection(section: Record<string, unknown>): boolean {
+  return Object.entries(section).every(([path, value]) => {
+    if (!path || path.startsWith('.') || path.endsWith('.') || path.includes('..')) {
+      return false
+    }
+    if (path === 'status_code') {
+      return isValidHttpStatus(value)
+    }
+    if (value === null) return true
+    return (
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean' ||
+      isJsonObjectValue(value)
+    )
+  })
 }
 
 function isCodexCredential(value: string | undefined): boolean {
