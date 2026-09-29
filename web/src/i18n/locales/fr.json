@@ -6870,11 +6870,11 @@
     "Zhipu": "Zhipu",
     "Zhipu GLM": "Zhipu GLM",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
-  },
-  "Stream Error Override": "Remplacement des erreurs de flux",
-  "Rewrite error events inside streaming responses (e.g. upstream failure frames or silent stream aborts). Rules are matched in order; the first matching rule wins.": "Réécrit les événements d'erreur dans les réponses en flux (cadres d'échec amont ou abandons silencieux). Les règles sont évaluées dans l'ordre ; la première correspondante s'applique.",
-  "Configure stream error override rules as a JSON array": "Configurez les règles de remplacement des erreurs de flux sous forme de tableau JSON",
-  "Each rule has a match section and an override section using dot paths. event selects the stream event: upstream frames (response.failed, error) or the synthesized stream.aborted (with end_reason, received_events, has_errors) for silent aborts. error.* rewrites the error fields; override only touches listed paths and null deletes.": "Chaque règle comporte une section match et une section override utilisant des chemins pointés. event sélectionne l'événement de flux : trames amont (response.failed, error) ou le stream.aborted synthétisé (avec end_reason, received_events, has_errors) pour les abandons silencieux. error.* réécrit les champs d'erreur ; override ne touche que les chemins listés et null supprime.",
-  "Stream error override must be a JSON array of match/override rules": "Le remplacement des erreurs de flux doit être un tableau JSON de règles match/override"
+    "Zoom": "Zoom",
+    "Stream Error Override": "Remplacement des erreurs de flux",
+    "Rewrite error events inside streaming responses (e.g. upstream failure frames or silent stream aborts). Rules are matched in order; the first matching rule wins.": "Réécrit les événements d'erreur dans les réponses en flux (cadres d'échec amont ou abandons silencieux). Les règles sont évaluées dans l'ordre ; la première correspondante s'applique.",
+    "Configure stream error override rules as a JSON array": "Configurez les règles de remplacement des erreurs de flux sous forme de tableau JSON",
+    "Each rule has a match section and an override section using dot paths. event selects the stream event: upstream frames (response.failed, error) or the synthesized stream.aborted (with end_reason, received_events, has_errors) for silent aborts. error.* rewrites the error fields; override only touches listed paths and null deletes.": "Chaque règle comporte une section match et une section override utilisant des chemins pointés. event sélectionne l'événement de flux : trames amont (response.failed, error) ou le stream.aborted synthétisé (avec end_reason, received_events, has_errors) pour les abandons silencieux. error.* réécrit les champs d'erreur ; override ne touche que les chemins listés et null supprime.",
+    "Stream error override must be a JSON array of match/override rules": "Le remplacement des erreurs de flux doit être un tableau JSON de règles match/override"
+  }
 }

@@ -6870,11 +6870,11 @@
     "Zhipu": "智谱",
     "Zhipu GLM": "智谱GLM",
     "Zhipu V4": "智谱 V4",
-    "Zoom": "缩放"
-  },
-  "Stream Error Override": "流错误覆盖",
-  "Rewrite error events inside streaming responses (e.g. upstream failure frames or silent stream aborts). Rules are matched in order; the first matching rule wins.": "改写流式响应中的错误事件（如上游失败帧或静默断流）。规则按顺序匹配，先命中先生效。",
-  "Configure stream error override rules as a JSON array": "以 JSON 数组形式配置流错误覆盖规则",
-  "Each rule has a match section and an override section using dot paths. event selects the stream event: upstream frames (response.failed, error) or the synthesized stream.aborted (with end_reason, received_events, has_errors) for silent aborts. error.* rewrites the error fields; override only touches listed paths and null deletes.": "每条规则由 match 和 override 组成，均用点路径。event 选择流事件：上游帧（response.failed、error）或网关为静默断流合成的 stream.aborted（含 end_reason、received_events、has_errors）。error.* 改写错误字段；override 只改列出的路径，null 表示删除。",
-  "Stream error override must be a JSON array of match/override rules": "流错误覆盖必须是 match/override 规则组成的 JSON 数组"
+    "Zoom": "缩放",
+    "Stream Error Override": "流错误覆盖",
+    "Rewrite error events inside streaming responses (e.g. upstream failure frames or silent stream aborts). Rules are matched in order; the first matching rule wins.": "改写流式响应中的错误事件（如上游失败帧或静默断流）。规则按顺序匹配，先命中先生效。",
+    "Configure stream error override rules as a JSON array": "以 JSON 数组形式配置流错误覆盖规则",
+    "Each rule has a match section and an override section using dot paths. event selects the stream event: upstream frames (response.failed, error) or the synthesized stream.aborted (with end_reason, received_events, has_errors) for silent aborts. error.* rewrites the error fields; override only touches listed paths and null deletes.": "每条规则由 match 和 override 组成，均用点路径。event 选择流事件：上游帧（response.failed、error）或网关为静默断流合成的 stream.aborted（含 end_reason、received_events、has_errors）。error.* 改写错误字段；override 只改列出的路径，null 表示删除。",
+    "Stream error override must be a JSON array of match/override rules": "流错误覆盖必须是 match/override 规则组成的 JSON 数组"
+  }
 }

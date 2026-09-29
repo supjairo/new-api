@@ -6870,11 +6870,11 @@
     "Zhipu": "Zhipu",
     "Zhipu GLM": "Zhipu GLM",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
-  },
-  "Stream Error Override": "Переопределение ошибок потока",
-  "Rewrite error events inside streaming responses (e.g. upstream failure frames or silent stream aborts). Rules are matched in order; the first matching rule wins.": "Изменяет события ошибок внутри потоковых ответов (например, кадры сбоев апстрима или тихие обрывы потока). Правила применяются по порядку; первое совпавшее правило побеждает.",
-  "Configure stream error override rules as a JSON array": "Настройте правила переопределения ошибок потока в виде JSON-массива",
-  "Each rule has a match section and an override section using dot paths. event selects the stream event: upstream frames (response.failed, error) or the synthesized stream.aborted (with end_reason, received_events, has_errors) for silent aborts. error.* rewrites the error fields; override only touches listed paths and null deletes.": "Каждое правило состоит из секций match и override с точечными путями. event выбирает событие потока: кадры апстрима (response.failed, error) или синтезированный stream.aborted (с end_reason, received_events, has_errors) для тихих обрывов. error.* изменяет поля ошибки; override затрагивает только перечисленные пути, null удаляет.",
-  "Stream error override must be a JSON array of match/override rules": "Переопределение ошибок потока должно быть JSON-массивом правил match/override"
+    "Zoom": "Zoom",
+    "Stream Error Override": "Переопределение ошибок потока",
+    "Rewrite error events inside streaming responses (e.g. upstream failure frames or silent stream aborts). Rules are matched in order; the first matching rule wins.": "Изменяет события ошибок внутри потоковых ответов (например, кадры сбоев апстрима или тихие обрывы потока). Правила применяются по порядку; первое совпавшее правило побеждает.",
+    "Configure stream error override rules as a JSON array": "Настройте правила переопределения ошибок потока в виде JSON-массива",
+    "Each rule has a match section and an override section using dot paths. event selects the stream event: upstream frames (response.failed, error) or the synthesized stream.aborted (with end_reason, received_events, has_errors) for silent aborts. error.* rewrites the error fields; override only touches listed paths and null deletes.": "Каждое правило состоит из секций match и override с точечными путями. event выбирает событие потока: кадры апстрима (response.failed, error) или синтезированный stream.aborted (с end_reason, received_events, has_errors) для тихих обрывов. error.* изменяет поля ошибки; override затрагивает только перечисленные пути, null удаляет.",
+    "Stream error override must be a JSON array of match/override rules": "Переопределение ошибок потока должно быть JSON-массивом правил match/override"
+  }
 }

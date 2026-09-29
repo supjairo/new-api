@@ -6870,11 +6870,11 @@
     "Zhipu": "Zhipu",
     "Zhipu GLM": "Zhipu GLM",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
-  },
-  "Stream Error Override": "Ghi đè lỗi luồng",
-  "Rewrite error events inside streaming responses (e.g. upstream failure frames or silent stream aborts). Rules are matched in order; the first matching rule wins.": "Ghi đè các sự kiện lỗi trong phản hồi streaming (như khung lỗi từ thượng nguồn hoặc ngắt luồng im lặng). Quy tắc được đối sánh theo thứ tự; quy tắc khớp đầu tiên được áp dụng.",
-  "Configure stream error override rules as a JSON array": "Cấu hình các quy tắc ghi đè lỗi luồng dưới dạng mảng JSON",
-  "Each rule has a match section and an override section using dot paths. event selects the stream event: upstream frames (response.failed, error) or the synthesized stream.aborted (with end_reason, received_events, has_errors) for silent aborts. error.* rewrites the error fields; override only touches listed paths and null deletes.": "Mỗi quy tắc gồm phần match và override dùng đường dẫn chấm. event chọn sự kiện luồng: khung thượng nguồn (response.failed, error) hoặc stream.aborted tổng hợp (kèm end_reason, received_events, has_errors) cho ngắt luồng im lặng. error.* ghi đè các trường lỗi; override chỉ đổi các đường dẫn được liệt kê, null là xóa.",
-  "Stream error override must be a JSON array of match/override rules": "Ghi đè lỗi luồng phải là một mảng JSON gồm các quy tắc match/override"
+    "Zoom": "Zoom",
+    "Stream Error Override": "Ghi đè lỗi luồng",
+    "Rewrite error events inside streaming responses (e.g. upstream failure frames or silent stream aborts). Rules are matched in order; the first matching rule wins.": "Ghi đè các sự kiện lỗi trong phản hồi streaming (như khung lỗi từ thượng nguồn hoặc ngắt luồng im lặng). Quy tắc được đối sánh theo thứ tự; quy tắc khớp đầu tiên được áp dụng.",
+    "Configure stream error override rules as a JSON array": "Cấu hình các quy tắc ghi đè lỗi luồng dưới dạng mảng JSON",
+    "Each rule has a match section and an override section using dot paths. event selects the stream event: upstream frames (response.failed, error) or the synthesized stream.aborted (with end_reason, received_events, has_errors) for silent aborts. error.* rewrites the error fields; override only touches listed paths and null deletes.": "Mỗi quy tắc gồm phần match và override dùng đường dẫn chấm. event chọn sự kiện luồng: khung thượng nguồn (response.failed, error) hoặc stream.aborted tổng hợp (kèm end_reason, received_events, has_errors) cho ngắt luồng im lặng. error.* ghi đè các trường lỗi; override chỉ đổi các đường dẫn được liệt kê, null là xóa.",
+    "Stream error override must be a JSON array of match/override rules": "Ghi đè lỗi luồng phải là một mảng JSON gồm các quy tắc match/override"
+  }
 }

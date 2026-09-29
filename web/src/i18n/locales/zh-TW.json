@@ -6870,11 +6870,11 @@
     "Zhipu": "智譜",
     "Zhipu GLM": "智譜GLM",
     "Zhipu V4": "智譜 V4",
-    "Zoom": "縮放"
-  },
-  "Stream Error Override": "串流錯誤覆寫",
-  "Rewrite error events inside streaming responses (e.g. upstream failure frames or silent stream aborts). Rules are matched in order; the first matching rule wins.": "改寫串流回應中的錯誤事件（如上游失敗幀或靜默中斷）。規則依序比對，先命中先生效。",
-  "Configure stream error override rules as a JSON array": "以 JSON 陣列形式設定串流錯誤覆寫規則",
-  "Each rule has a match section and an override section using dot paths. event selects the stream event: upstream frames (response.failed, error) or the synthesized stream.aborted (with end_reason, received_events, has_errors) for silent aborts. error.* rewrites the error fields; override only touches listed paths and null deletes.": "每條規則由 match 和 override 組成，均用點路徑。event 選擇串流事件：上游幀（response.failed、error）或閘道為靜默中斷合成的 stream.aborted（含 end_reason、received_events、has_errors）。error.* 改寫錯誤欄位；override 只改列出的路徑，null 表示刪除。",
-  "Stream error override must be a JSON array of match/override rules": "串流錯誤覆寫必須是 match/override 規則組成的 JSON 陣列"
+    "Zoom": "縮放",
+    "Stream Error Override": "串流錯誤覆寫",
+    "Rewrite error events inside streaming responses (e.g. upstream failure frames or silent stream aborts). Rules are matched in order; the first matching rule wins.": "改寫串流回應中的錯誤事件（如上游失敗幀或靜默中斷）。規則依序比對，先命中先生效。",
+    "Configure stream error override rules as a JSON array": "以 JSON 陣列形式設定串流錯誤覆寫規則",
+    "Each rule has a match section and an override section using dot paths. event selects the stream event: upstream frames (response.failed, error) or the synthesized stream.aborted (with end_reason, received_events, has_errors) for silent aborts. error.* rewrites the error fields; override only touches listed paths and null deletes.": "每條規則由 match 和 override 組成，均用點路徑。event 選擇串流事件：上游幀（response.failed、error）或閘道為靜默中斷合成的 stream.aborted（含 end_reason、received_events、has_errors）。error.* 改寫錯誤欄位；override 只改列出的路徑，null 表示刪除。",
+    "Stream error override must be a JSON array of match/override rules": "串流錯誤覆寫必須是 match/override 規則組成的 JSON 陣列"
+  }
 }
