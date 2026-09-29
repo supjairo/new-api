@@ -104,6 +104,16 @@ func OaiResponsesStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp
 	return accumulator.Finish(), nil
 }
 
+// responsesStreamErrorEvents lists the event types the stream error override
+// may touch. Restricting evaluation to error events keeps a catch-all
+// fallback rule (empty match) from rewriting normal content events such as
+// response.output_text.delta.
+var responsesStreamErrorEvents = map[string]struct{}{
+	"response.failed": {},
+	"response.error":  {},
+	"error":           {},
+}
+
 // applyResponsesStreamErrorOverride inspects one upstream event against the
 // channel's stream error override rules and returns the rewritten raw data
 // plus event when a rule fires. A rule that deletes the event type drops the
@@ -111,6 +121,9 @@ func OaiResponsesStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp
 // usage accumulator keeps observing the overridden event so settlement stays
 // consistent with what the client received.
 func applyResponsesStreamErrorOverride(c *gin.Context, info *relaycommon.RelayInfo, streamResponse dto.ResponsesStreamResponse, data string) (string, dto.ResponsesStreamResponse) {
+	if _, isErrEvent := responsesStreamErrorEvents[streamResponse.Type]; !isErrEvent {
+		return data, streamResponse
+	}
 	rulesStr := service.PrepareStreamErrorOverrideRules(c)
 	if rulesStr == "" {
 		return data, streamResponse
@@ -126,7 +139,16 @@ func applyResponsesStreamErrorOverride(c *gin.Context, info *relaycommon.RelayIn
 		logger.LogInfo(c, "stream error override dropped event: "+streamResponse.Type)
 		return "", streamResponse
 	}
-	patch, err := common.Marshal(rewritten)
+	// The tree names the event "event"; the Responses wire format uses "type".
+	wire := make(map[string]any, len(rewritten))
+	for key, value := range rewritten {
+		if key == "event" {
+			wire["type"] = value
+			continue
+		}
+		wire[key] = value
+	}
+	patch, err := common.Marshal(wire)
 	if err != nil {
 		return data, streamResponse
 	}
@@ -140,30 +162,43 @@ func applyResponsesStreamErrorOverride(c *gin.Context, info *relaycommon.RelayIn
 	return string(patch), patched
 }
 
-// streamEventPayload flattens the parsed event into the generic tree fields:
-// the response error under "error" plus code/message/param shorthand.
+// streamEventPayload renders the parsed event as the generic tree fields the
+// rules address: the error details merged under a nested "error" object (from
+// the response object's error and/or the flat code/message/param fields) plus
+// the response status for response.failed style events.
 func streamEventPayload(streamResponse dto.ResponsesStreamResponse) map[string]any {
 	payload := map[string]any{}
+	errObj := map[string]any{}
 	if streamResponse.Response != nil {
 		if oaiErr := streamResponse.Response.GetOpenAIError(); oaiErr != nil {
-			errObj := map[string]any{"message": oaiErr.Message, "type": oaiErr.Type, "param": oaiErr.Param}
+			if oaiErr.Message != "" {
+				errObj["message"] = oaiErr.Message
+			}
+			if oaiErr.Type != "" {
+				errObj["type"] = oaiErr.Type
+			}
+			if oaiErr.Param != "" {
+				errObj["param"] = oaiErr.Param
+			}
 			if oaiErr.Code != nil {
 				errObj["code"] = oaiErr.Code
 			}
-			payload["error"] = errObj
 		}
 		if status := string(streamResponse.Response.Status); status != "" && status != "null" {
-			payload["response.status"] = status
+			payload["response"] = map[string]any{"status": status}
 		}
 	}
 	if streamResponse.Code != "" {
-		payload["error.code"] = streamResponse.Code
+		errObj["code"] = streamResponse.Code
 	}
 	if streamResponse.Message != "" {
-		payload["error.message"] = streamResponse.Message
+		errObj["message"] = streamResponse.Message
 	}
 	if streamResponse.Param != "" {
-		payload["error.param"] = streamResponse.Param
+		errObj["param"] = streamResponse.Param
+	}
+	if len(errObj) > 0 {
+		payload["error"] = errObj
 	}
 	return payload
 }
