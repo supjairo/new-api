@@ -224,6 +224,28 @@ func TestApplyErrorOverride(t *testing.T) {
 		require.Equal(t, "boom", err.ToOpenAIError().Message)
 	})
 
+	t.Run("local gateway errors are never rewritten", func(t *testing.T) {
+		t.Parallel()
+
+		rules := `[{"match":{},"override":{"http_status":500,"body":{"error":{"message":"服务繁忙，请稍后再试","code":"server_busy"}}}}]`
+
+		// Mirrors relay/request_billing.go: plain local error via NewError.
+		localErr := types.NewError(fmt.Errorf("count token failed"), types.ErrorCodeCountTokenFailed)
+		ApplyErrorOverride(localErr, rules)
+		require.Equal(t, http.StatusInternalServerError, localErr.StatusCode)
+		require.Equal(t, "count token failed", localErr.ToOpenAIError().Message)
+		require.Nil(t, evaluateErrorOverride(localErr, rules))
+
+		// Mirrors service/billing_session.go: quota-style local error via
+		// NewErrorWithStatusCode carries a wire payload but stays local
+		// (new_api_error) and must remain untouched as well.
+		quotaErr := types.NewErrorWithStatusCode(fmt.Errorf("订阅额度不足或未配置订阅: %s", "test"), types.ErrorCodeInsufficientUserQuota, http.StatusForbidden)
+		ApplyErrorOverride(quotaErr, rules)
+		require.Equal(t, http.StatusForbidden, quotaErr.StatusCode)
+		require.Equal(t, "订阅额度不足或未配置订阅: test", quotaErr.ToOpenAIError().Message)
+		require.Nil(t, evaluateErrorOverride(quotaErr, rules))
+	})
+
 	t.Run("code must match", func(t *testing.T) {
 		t.Parallel()
 
