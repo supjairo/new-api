@@ -88,9 +88,18 @@ func ProcessChannelError(c *gin.Context, channelError types.ChannelError, err *t
 		other.SetPublic("status_code", err.StatusCode)
 		// Error response override audit (admin only): recorded when the
 		// channel's override rules will rewrite this error for the client.
+		// The log content mirrors what the client receives: when an override
+		// rule rewrote the error, show the overridden error instead of the
+		// raw upstream one.
 		value, _ := common.GetContextKey(c, constant.ContextKeyErrorOverrideAudit)
-		if audit, _ := value.(*ErrorOverrideAudit); audit != nil && audit.Overridden != audit.Original {
+		audit, _ := value.(*ErrorOverrideAudit)
+		overridden := audit != nil && audit.Overridden != audit.Original
+		if overridden {
 			other.SetAdmin("error_override", audit)
+		}
+		content := err.MaskSensitiveErrorWithStatusCode()
+		if overridden {
+			content = errorOverrideContent(audit.Overridden)
 		}
 		AppendRelayLogAdminInfo(c, relayInfo, other)
 		AppendResponseModelLogInfo(relayInfo, other)
@@ -100,6 +109,18 @@ func ProcessChannelError(c *gin.Context, channelError types.ChannelError, err *t
 			startTime = time.Now()
 		}
 		useTimeSeconds := int(time.Since(startTime).Seconds())
-		model.RecordErrorLog(c, userId, channelError.ChannelId, modelName, tokenName, err.MaskSensitiveErrorWithStatusCode(), tokenId, useTimeSeconds, common.GetContextKeyBool(c, constant.ContextKeyIsStream), userGroup, other)
+		model.RecordErrorLog(c, userId, channelError.ChannelId, modelName, tokenName, content, tokenId, useTimeSeconds, common.GetContextKeyBool(c, constant.ContextKeyIsStream), userGroup, other)
 	}
+}
+
+// errorOverrideContent renders an overridden error snapshot in the same
+// "status_code=N, message" shape as NewAPIError.MaskSensitiveErrorWithStatusCode.
+func errorOverrideContent(snapshot ErrorOverrideSnapshot) string {
+	if snapshot.Status == 0 {
+		return snapshot.Message
+	}
+	if snapshot.Message == "" {
+		return fmt.Sprintf("status_code=%d", snapshot.Status)
+	}
+	return fmt.Sprintf("status_code=%d, %s", snapshot.Status, snapshot.Message)
 }
