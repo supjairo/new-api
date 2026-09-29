@@ -63,6 +63,7 @@ export const channelSchema = z.object({
   param_override: z.string().nullish(),
   header_override: z.string().nullish(),
   error_override: z.string().nullish(),
+  stream_error_override: z.string().nullish(),
   remark: z.string().default(''),
   max_input_tokens: z.number().default(0),
   channel_info: channelInfoSchema.default({
@@ -371,6 +372,7 @@ export interface ChannelFormData {
   param_override?: string
   header_override?: string
   error_override?: string
+  stream_error_override?: string
   settings?: string
   other?: string
   // Multi-key specific

@@ -91,6 +91,10 @@ func OaiResponsesStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp
 		if streamResponse.Response != nil {
 			data = string(rewriteSGLangResponsesCreatedAt(info, []byte(data), "response.created_at", streamResponse.Response.CreatedAt))
 		}
+		data, streamResponse = applyResponsesStreamErrorOverride(c, info, streamResponse, data)
+		if data == "" {
+			return
+		}
 		sendResponsesStreamData(c, streamResponse, data)
 		accumulator.Observe(&streamResponse)
 	})
@@ -98,6 +102,70 @@ func OaiResponsesStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp
 	common.SetContextKey(c, constant.ContextKeyResponseStreamStatus, info.StreamStatus)
 	info.StreamStatus.RequireTerminal()
 	return accumulator.Finish(), nil
+}
+
+// applyResponsesStreamErrorOverride inspects one upstream event against the
+// channel's stream error override rules and returns the rewritten raw data
+// plus event when a rule fires. A rule that deletes the event type drops the
+// event entirely (empty data). Only the client-facing payload changes; the
+// usage accumulator keeps observing the overridden event so settlement stays
+// consistent with what the client received.
+func applyResponsesStreamErrorOverride(c *gin.Context, info *relaycommon.RelayInfo, streamResponse dto.ResponsesStreamResponse, data string) (string, dto.ResponsesStreamResponse) {
+	rulesStr := service.PrepareStreamErrorOverrideRules(c)
+	if rulesStr == "" {
+		return data, streamResponse
+	}
+	tree := service.StreamErrorEvent(streamResponse.Type, streamEventPayload(streamResponse))
+	rewritten := service.ApplyStreamErrorOverride(tree, rulesStr)
+	if rewritten == nil {
+		return data, streamResponse
+	}
+	newType, _ := rewritten["event"].(string)
+	if newType == "" {
+		// The rule deleted the event field; treat it as a dropped event.
+		logger.LogInfo(c, "stream error override dropped event: "+streamResponse.Type)
+		return "", streamResponse
+	}
+	patch, err := common.Marshal(rewritten)
+	if err != nil {
+		return data, streamResponse
+	}
+	var patched dto.ResponsesStreamResponse
+	if uerr := common.Unmarshal(patch, &patched); uerr != nil {
+		logger.LogError(c, "stream error override re-decode failed: "+uerr.Error())
+		return data, streamResponse
+	}
+	patched.Type = newType
+	logger.LogInfo(c, fmt.Sprintf("stream error override applied: event=%s -> %s", streamResponse.Type, newType))
+	return string(patch), patched
+}
+
+// streamEventPayload flattens the parsed event into the generic tree fields:
+// the response error under "error" plus code/message/param shorthand.
+func streamEventPayload(streamResponse dto.ResponsesStreamResponse) map[string]any {
+	payload := map[string]any{}
+	if streamResponse.Response != nil {
+		if oaiErr := streamResponse.Response.GetOpenAIError(); oaiErr != nil {
+			errObj := map[string]any{"message": oaiErr.Message, "type": oaiErr.Type, "param": oaiErr.Param}
+			if oaiErr.Code != nil {
+				errObj["code"] = oaiErr.Code
+			}
+			payload["error"] = errObj
+		}
+		if status := string(streamResponse.Response.Status); status != "" && status != "null" {
+			payload["response.status"] = status
+		}
+	}
+	if streamResponse.Code != "" {
+		payload["error.code"] = streamResponse.Code
+	}
+	if streamResponse.Message != "" {
+		payload["error.message"] = streamResponse.Message
+	}
+	if streamResponse.Param != "" {
+		payload["error.param"] = streamResponse.Param
+	}
+	return payload
 }
 
 func rewriteSGLangResponsesCreatedAt(info *relaycommon.RelayInfo, payload []byte, path string, createdAt dto.IntValue) []byte {

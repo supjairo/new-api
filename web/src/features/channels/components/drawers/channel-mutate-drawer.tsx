@@ -2931,6 +2931,89 @@ export function ChannelMutateDrawer({
             </FormItem>
           )}
         />
+
+        <FormField
+          control={form.control}
+          name='stream_error_override'
+          render={({ field }) => (
+            <FormItem className='space-y-3 border-t pt-4'>
+              <div className='flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between'>
+                <div className='space-y-1'>
+                  <FormLabel>{t('Stream Error Override')}</FormLabel>
+                  <FormDescription>
+                    {t(
+                      'Rewrite error events inside streaming responses (e.g. upstream failure frames or silent stream aborts). Rules are matched in order; the first matching rule wins.'
+                    )}
+                  </FormDescription>
+                </div>
+                <div className='flex flex-wrap gap-2'>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    size='sm'
+                    onClick={() =>
+                      field.onChange(
+                        JSON.stringify(
+                          [
+                            {
+                              match: {
+                                event: 'response.failed',
+                                'error.code': 'stream_disconnected',
+                              },
+                              override: {
+                                'error.message': '服务繁忙，请稍后再试',
+                                'error.code': 'server_busy',
+                              },
+                            },
+                            {
+                              match: { event: 'stream.aborted', end_reason: 'timeout' },
+                              override: {
+                                'error.message': '上游流式响应中断，请稍后重试',
+                                'error.code': 'stream_aborted',
+                              },
+                            },
+                          ],
+                          null,
+                          2
+                        )
+                      )
+                    }
+                  >
+                    {t('Fill Template')}
+                  </Button>
+                  <Button
+                    type='button'
+                    variant='ghost'
+                    size='sm'
+                    onClick={() => field.onChange('')}
+                  >
+                    {t('Clear')}
+                  </Button>
+                </div>
+              </div>
+              <FormControl>
+                <JsonCodeEditor
+                  value={field.value || ''}
+                  onChange={field.onChange}
+                  name={field.name}
+                  onBlur={field.onBlur}
+                  textareaRef={field.ref}
+                  disabled={sensitiveLocked || isSubmitting}
+                  placeholder={t(
+                    'Configure stream error override rules as a JSON array'
+                  )}
+                  heightClassName='h-40 min-h-40 max-h-40'
+                />
+              </FormControl>
+              <FormDescription className='text-xs'>
+                {t(
+                  'Each rule has a match section and an override section using dot paths. event selects the stream event: upstream frames (response.failed, error) or the synthesized stream.aborted (with end_reason, received_events, has_errors) for silent aborts. error.* rewrites the error fields; override only touches listed paths and null deletes.'
+                )}
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
       </fieldset>
     </div>
   )

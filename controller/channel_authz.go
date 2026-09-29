@@ -24,6 +24,9 @@ func channelHasSensitiveChanges(channel *PatchChannel, origin *model.Channel, re
 	if _, ok := requestData["error_override"]; ok && !equalStringPtr(channel.ErrorOverride, origin.ErrorOverride) {
 		return true
 	}
+	if _, ok := requestData["stream_error_override"]; ok && !equalStringPtr(channel.StreamErrorOverride, origin.StreamErrorOverride) {
+		return true
+	}
 	if _, ok := requestData["setting"]; ok && !equalStringPtr(channel.Setting, origin.Setting) {
 		return true
 	}
@@ -64,17 +67,18 @@ func channelHasSensitiveChanges(channel *PatchChannel, origin *model.Channel, re
 // channelHasSensitiveChanges with a precise old-vs-new comparison; this set is
 // used to exclude them from the fail-closed scan for unknown fields.
 var channelSensitiveFields = map[string]struct{}{
-	"type":                {},
-	"key":                 {},
-	"base_url":            {},
-	"openai_organization": {},
-	"header_override":     {},
-	"param_override":      {},
-	"error_override":      {},
-	"setting":             {},
-	"other":               {},
-	"settings":            {},
-	"key_mode":            {},
+	"type":                  {},
+	"key":                   {},
+	"base_url":              {},
+	"openai_organization":   {},
+	"header_override":       {},
+	"param_override":        {},
+	"error_override":        {},
+	"stream_error_override": {},
+	"setting":               {},
+	"other":                 {},
+	"settings":              {},
+	"key_mode":              {},
 }
 
 // channelOperationalFields lists fields managed by operation endpoints instead

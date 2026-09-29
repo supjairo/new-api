@@ -2658,7 +2658,7 @@
     "footer.columns.related.links.oneApi": "One API",
     "footer.columns.related.title": "Projets liés",
     "footer.defaultCopyright": "Tous droits réservés.",
-    "footer.new\u0061pi.projectAttributionSuffix": "Tous droits réservés. Conçu et développé par les contributeurs du projet.",
+    "footer.newapi.projectAttributionSuffix": "Tous droits réservés. Conçu et développé par les contributeurs du projet.",
     "For advanced custom channels this applies only to /v1/responses routes without protocol conversion.": "Pour les canaux personnalisés avancés, ceci ne s’applique qu’aux routes /v1/responses sans conversion de protocole.",
     "For channels added after May 10, 2025, no need to remove \".\" from model names during deployment": "Pour les canaux ajoutés après le 10 mai 2025, pas besoin de supprimer \".\" des noms de modèles lors du déploiement",
     "For private deployments, format: https://fastgpt.run/api/openapi": "Pour les déploiements privés, format : https://fastgpt.run/api/openapi",
@@ -6871,5 +6871,10 @@
     "Zhipu GLM": "Zhipu GLM",
     "Zhipu V4": "Zhipu V4",
     "Zoom": "Zoom"
-  }
+  },
+  "Stream Error Override": "Remplacement des erreurs de flux",
+  "Rewrite error events inside streaming responses (e.g. upstream failure frames or silent stream aborts). Rules are matched in order; the first matching rule wins.": "Réécrit les événements d'erreur dans les réponses en flux (cadres d'échec amont ou abandons silencieux). Les règles sont évaluées dans l'ordre ; la première correspondante s'applique.",
+  "Configure stream error override rules as a JSON array": "Configurez les règles de remplacement des erreurs de flux sous forme de tableau JSON",
+  "Each rule has a match section and an override section using dot paths. event selects the stream event: upstream frames (response.failed, error) or the synthesized stream.aborted (with end_reason, received_events, has_errors) for silent aborts. error.* rewrites the error fields; override only touches listed paths and null deletes.": "Chaque règle comporte une section match et une section override utilisant des chemins pointés. event sélectionne l'événement de flux : trames amont (response.failed, error) ou le stream.aborted synthétisé (avec end_reason, received_events, has_errors) pour les abandons silencieux. error.* réécrit les champs d'erreur ; override ne touche que les chemins listés et null supprime.",
+  "Stream error override must be a JSON array of match/override rules": "Le remplacement des erreurs de flux doit être un tableau JSON de règles match/override"
 }
