@@ -36,6 +36,126 @@ func appendToolSurchargeLogInfo(other *model.LogOther, items []ToolSurchargeItem
 	other.SetPublic("tool_surcharges", items)
 }
 
+type cacheBillingAdjustment struct {
+	Model        string  `json:"model"`
+	ReadPercent  float64 `json:"read_percent"`
+	OriginalRead int     `json:"original_read"`
+	Read         int     `json:"adjusted_read"`
+}
+
+func cacheBillingPercent(value *float64, model, field string) float64 {
+	if value == nil {
+		return 100
+	}
+	if math.IsNaN(*value) || math.IsInf(*value, 0) || *value < 0 || *value > 100 {
+		common.SysError(fmt.Sprintf("invalid cache billing adjustment model=%q field=%s; using 100 percent", model, field))
+		return 100
+	}
+	return *value
+}
+
+func adjustedCacheTokens(info *relaycommon.RelayInfo, tokens int, percent float64) int {
+	if percent == 100 {
+		return tokens
+	}
+	value, clamp := common.QuotaFromDecimalChecked(decimal.NewFromInt(int64(max(tokens, 0))).Mul(decimal.NewFromFloat(percent)).Div(decimal.NewFromInt(100)).Floor())
+	noteQuotaClamp(info, clamp)
+	return value
+}
+
+func newCacheBillingAdjustment(info *relaycommon.RelayInfo, usage *dto.Usage) *cacheBillingAdjustment {
+	if usage == nil || info.ChannelMeta == nil || info.AudioUsage || info.ClientWs != nil || info.TargetWs != nil || usage.PromptTokensDetails.AudioTokens != 0 || usage.CompletionTokenDetails.AudioTokens != 0 {
+		return nil
+	}
+	if details := usage.PromptTokensDetails.CachedTokensDetails; details != nil && details.AudioTokens != nil && *details.AudioTokens != 0 {
+		return nil
+	}
+	switch info.RelayMode {
+	case relayconstant.RelayModeChatCompletions, relayconstant.RelayModeCompletions, relayconstant.RelayModeResponses, relayconstant.RelayModeResponsesCompact:
+	case relayconstant.RelayModeGemini:
+		path, _, _ := strings.Cut(info.RequestURLPath, "?")
+		if info.IsGeminiBatchEmbedding || (!strings.HasSuffix(path, ":generateContent") && !strings.HasSuffix(path, ":streamGenerateContent")) {
+			return nil
+		}
+	case relayconstant.RelayModeUnknown:
+		if path, _, _ := strings.Cut(info.RequestURLPath, "?"); path != "/v1/messages" {
+			return nil
+		}
+	default:
+		return nil
+	}
+	rule := info.ChannelSetting.CacheBillingAdjustments[info.OriginModelName]
+	if rule == nil {
+		return nil
+	}
+	read := cacheBillingPercent(rule.ReadPercent, info.OriginModelName, "read_percent")
+	if read == 100 {
+		return nil
+	}
+	return &cacheBillingAdjustment{Model: info.OriginModelName, ReadPercent: read}
+}
+
+// adjustedBillingUsage changes cache quantities only, before either billing engine.
+// The upstream usage and its billing snapshot remain immutable.
+func adjustedBillingUsage(info *relaycommon.RelayInfo, usage *dto.Usage, a *cacheBillingAdjustment) *dto.Usage {
+	if a == nil || a.ReadPercent == 100 {
+		return usage
+	}
+	adjusted := *usage
+	adjusted.PromptTokensDetails = usage.PromptTokensDetails.Clone()
+	if usage.InputTokensDetails != nil {
+		details := usage.InputTokensDetails.Clone()
+		adjusted.InputTokensDetails = &details
+	}
+	// The immutable snapshot has already been applied by effectiveBillingUsage.
+	// Do not let another remap overwrite the adjusted entry quantities.
+	adjusted.BillingUsage = nil
+	a.OriginalRead = usage.PromptTokensDetails.CachedTokens
+	a.Read = adjustedCacheTokens(info, a.OriginalRead, a.ReadPercent)
+	details := &adjusted.PromptTokensDetails
+	if cached := details.CachedTokensDetails; cached != nil {
+		remaining := usage.PromptTokensDetails.CachedTokens
+		valid := remaining >= 0
+		for _, count := range []*int{cached.TextTokens, cached.ImageTokens, cached.AudioTokens} {
+			if count == nil {
+				continue
+			}
+			if *count < 0 || *count > remaining {
+				valid = false
+				break
+			}
+			remaining -= *count
+		}
+		if cached.ImageTokens != nil {
+			image := *cached.ImageTokens
+			valid = valid && image >= 0 && image <= usage.PromptTokensDetails.ImageTokens &&
+				usage.PromptTokensDetails.CachedTokens <= usage.PromptTokens &&
+				usage.PromptTokensDetails.ImageTokens <= usage.PromptTokens-(usage.PromptTokensDetails.CachedTokens-image)
+		}
+		if valid {
+			total := adjustedCacheTokens(info, remaining, a.ReadPercent)
+			for _, count := range []*int{cached.TextTokens, cached.ImageTokens, cached.AudioTokens} {
+				if count == nil {
+					continue
+				}
+				*count = adjustedCacheTokens(info, *count, a.ReadPercent)
+				total += *count
+			}
+			a.Read = total
+		} else {
+			// Preserve the existing aggregate fallback for invalid modality details.
+			details.CachedTokensDetails = nil
+		}
+	}
+	details.CachedTokens = a.Read
+	adjusted.PromptCacheHitTokens = adjustedCacheTokens(info, usage.PromptCacheHitTokens, a.ReadPercent)
+	if adjusted.InputTokensDetails != nil {
+		adjusted.InputTokensDetails.CachedTokens = details.CachedTokens
+		adjusted.InputTokensDetails.CachedTokensDetails = details.Clone().CachedTokensDetails
+	}
+	return &adjusted
+}
+
 type textQuotaSummary struct {
 	PromptTokens           int
 	CompletionTokens       int
@@ -401,7 +521,17 @@ func PostTextConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, us
 	}
 
 	adminRejectReason := common.GetContextKeyString(ctx, constant.ContextKeyAdminRejectReason)
-	summary := calculateTextQuotaSummary(ctx, relayInfo, billingUsage)
+	adjustment := newCacheBillingAdjustment(relayInfo, billingUsage)
+	originalSummary := calculateTextQuotaSummary(ctx, relayInfo, billingUsage)
+	summary := originalSummary
+	originalBillingUsage := billingUsage
+	if relayInfo.PriceData.UsePrice && relayInfo.TieredBillingSnapshot == nil {
+		adjustment = nil
+	}
+	if adjustment != nil {
+		billingUsage = adjustedBillingUsage(relayInfo, billingUsage, adjustment)
+		summary = calculateTextQuotaSummary(ctx, relayInfo, billingUsage)
+	}
 
 	var tieredResult *billingexpr.TieredResult
 	var tieredTokens billingexpr.TokenParams
@@ -423,8 +553,18 @@ func PostTextConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, us
 		if tieredOk {
 			tieredBillingApplied = true
 			tieredResult = tieredRes
-			summary.Quota = composeTieredTextQuota(relayInfo, summary, tieredQuota, tieredRes)
 			summary.FixedPriceBilling = isFixedPriceSettlement(relayInfo, tieredRes)
+			if adjustment != nil {
+				if tieredRes == nil || summary.FixedPriceBilling {
+					adjustment = nil
+					billingUsage = originalBillingUsage
+					summary = originalSummary
+					summary.FixedPriceBilling = isFixedPriceSettlement(relayInfo, tieredRes)
+				} else {
+					tieredRes.BillingTokens = &tieredTokens
+				}
+			}
+			summary.Quota = composeTieredTextQuota(relayInfo, summary, tieredQuota, tieredRes)
 			if summary.FixedPriceBilling {
 				summary.AudioInputPrice = 0
 			}
@@ -531,6 +671,10 @@ func PostTextConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, us
 
 	}
 
+	if adjustment != nil {
+		other.SetPublic("cache_tokens", summary.CacheTokens)
+		other.SetAdmin("cache_billing_adjustment", adjustment)
+	}
 	attachQuotaSaturation(ctx, relayInfo, other)
 
 	model.RecordConsumeLog(ctx, relayInfo.UserId, model.RecordConsumeLogParams{

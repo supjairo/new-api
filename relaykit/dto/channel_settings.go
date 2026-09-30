@@ -2,6 +2,7 @@ package dto
 
 import (
 	"fmt"
+	"math"
 	"net/url"
 	"regexp"
 	"slices"
@@ -11,15 +12,39 @@ import (
 	"github.com/QuantumNous/new-api/relaykit/types"
 )
 
+type CacheBillingAdjustment struct {
+	ReadPercent *float64 `json:"read_percent,omitempty"`
+}
+
+func (s *ChannelSettings) ValidateCacheBillingAdjustments() error {
+	if s == nil {
+		return nil
+	}
+	for model, rule := range s.CacheBillingAdjustments {
+		if strings.TrimSpace(model) == "" {
+			return fmt.Errorf("cache_billing_adjustments[%q]: model name must not be blank", model)
+		}
+		if rule == nil {
+			return fmt.Errorf("cache_billing_adjustments[%q]: rule must be an object", model)
+		}
+		value := rule.ReadPercent
+		if value != nil && (math.IsNaN(*value) || math.IsInf(*value, 0) || *value < 0 || *value > 100) {
+			return fmt.Errorf("cache_billing_adjustments[%q].read_percent must be a finite number between 0 and 100", model)
+		}
+	}
+	return nil
+}
+
 type ChannelSettings struct {
-	TaskPluginKey             string `json:"task_plugin_key,omitempty"`
-	ForceFormat               bool   `json:"force_format,omitempty"`
-	ThinkingToContent         bool   `json:"thinking_to_content,omitempty"`
-	Proxy                     string `json:"proxy"`
-	PassThroughBodyEnabled    bool   `json:"pass_through_body_enabled,omitempty"`
-	ResponsesWebSocketEnabled bool   `json:"responses_websocket_enabled,omitempty"`
-	SystemPrompt              string `json:"system_prompt,omitempty"`
-	SystemPromptOverride      bool   `json:"system_prompt_override,omitempty"`
+	CacheBillingAdjustments   map[string]*CacheBillingAdjustment `json:"cache_billing_adjustments,omitempty"`
+	TaskPluginKey             string                             `json:"task_plugin_key,omitempty"`
+	ForceFormat               bool                               `json:"force_format,omitempty"`
+	ThinkingToContent         bool                               `json:"thinking_to_content,omitempty"`
+	Proxy                     string                             `json:"proxy"`
+	PassThroughBodyEnabled    bool                               `json:"pass_through_body_enabled,omitempty"`
+	ResponsesWebSocketEnabled bool                               `json:"responses_websocket_enabled,omitempty"`
+	SystemPrompt              string                             `json:"system_prompt,omitempty"`
+	SystemPromptOverride      bool                               `json:"system_prompt_override,omitempty"`
 	// TaskExtendPluginKeys lists the task plugins a New API channel (type 60)
 	// is extended with. The upstream gateway may host many plugins, so the
 	// channel serves every listed plugin's models while the request still pins
