@@ -1795,13 +1795,13 @@ export function ChannelMutateDrawer({
     [onOpenChange, form, isSubmitting, showProviderPicker, providerTarget]
   )
 
-  const cacheBillingAdjustmentFields = (
+  const upstreamCacheRateControlFields = (
     <FormField
       control={form.control}
       name='cache_billing_adjustments'
       render={({ field }) => (
         <FormItem className='space-y-3 border-t pt-4'>
-          <FormLabel>{t('Model cache billing adjustments')}</FormLabel>
+          <FormLabel>{t('Upstream model cache rate control')}</FormLabel>
           <FormDescription>
             {t(
               'Match client model names exactly (case-sensitive), not upstream mappings or billing aliases. Only read_percent is supported; decimals from 0 to 100 are allowed, and missing or null percentages default to 100. Leave empty or use {} to clear all rules.'
@@ -1827,7 +1827,7 @@ export function ChannelMutateDrawer({
           </FormControl>
           <FormDescription>
             {t(
-              'Applies only to HTTP/SSE text billing for Chat/Completions, Responses (including Compact), Claude, and Gemini. Requests with audio usage and standalone audio, Realtime, image, and task billing are excluded. Cache reads are reduced and rounded down before the existing billing calculation. Input, output, and cache write quantities stay unchanged. The existing pricing rules split ordinary input automatically.'
+              'Applies only to HTTP/SSE text billing for Chat/Completions, Responses (including Compact), Claude, and Gemini. Requests with audio usage and standalone audio, Realtime, image, and task billing are excluded. Cache reads are capped at the configured rate and rounded down before the existing billing calculation. Input, output, and cache write quantities stay unchanged. The existing pricing rules split ordinary input automatically.'
             )}
           </FormDescription>
           <FormMessage />
@@ -4899,7 +4899,7 @@ export function ChannelMutateDrawer({
                 {proxyFields}
                 {httpProtocolFields}
                 {httpShardsFields}
-                {cacheBillingAdjustmentFields}
+                {upstreamCacheRateControlFields}
               </fieldset>
             </div>
             {upstreamModelDetectionFields}
