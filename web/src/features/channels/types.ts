@@ -111,7 +111,12 @@ export type Channel = z.infer<typeof channelSchema>
 // Channel Settings Types
 // ============================================================================
 
+export interface CacheBillingAdjustment {
+  read_percent?: number | null
+}
+
 export interface ChannelSettings {
+  cache_billing_adjustments?: Record<string, CacheBillingAdjustment>
   task_plugin_key?: string
   task_extend_plugin_keys?: string[]
   /** Request processing instance ids, in the order they run. */

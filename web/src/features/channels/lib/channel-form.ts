@@ -128,6 +128,29 @@ function isOptionalJsonObject(value: string | undefined): boolean {
   }
 }
 
+function isOptionalCacheBillingAdjustments(value: string | undefined): boolean {
+  try {
+    const parsed = parseOptionalJson(value)
+    if (parsed === undefined) return true
+    if (!isJsonObjectValue(parsed)) return false
+    return Object.entries(parsed).every(([model, rule]) => {
+      if (!model.trim() || !isJsonObjectValue(rule)) return false
+      return Object.entries(rule).every(([field, percent]) => {
+        if (field !== 'read_percent') return false
+        return (
+          percent === null ||
+          (typeof percent === 'number' &&
+            Number.isFinite(percent) &&
+            percent >= 0 &&
+            percent <= 100)
+        )
+      })
+    })
+  } catch {
+    return false
+  }
+}
+
 function isOptionalModelMapping(value: string | undefined): boolean {
   try {
     const parsed = parseOptionalJson(value)
@@ -209,7 +232,12 @@ function isOptionalErrorOverride(value: string | undefined): boolean {
 
 function isOverrideSection(section: Record<string, unknown>): boolean {
   return Object.entries(section).every(([path, value]) => {
-    if (!path || path.startsWith('.') || path.endsWith('.') || path.includes('..')) {
+    if (
+      !path ||
+      path.startsWith('.') ||
+      path.endsWith('.') ||
+      path.includes('..')
+    ) {
       return false
     }
     if (path === 'status_code') {
@@ -340,6 +368,13 @@ export const channelFormSchema = z
     batch_add_set_key_prefix_2_name: z.boolean().optional(),
     key_mode: z.enum(['append', 'replace']).optional(), // For editing multi-key channels
     // Channel extra settings (stored in setting JSON, not sent directly)
+    cache_billing_adjustments: z
+      .string()
+      .optional()
+      .refine(
+        isOptionalCacheBillingAdjustments,
+        'Cache billing adjustments must be a JSON object with non-empty model names and object rules containing only read_percent numbers from 0 to 100, or null'
+      ),
     force_format: z.boolean().optional(),
     thinking_to_content: z.boolean().optional(),
     proxy: z
@@ -548,6 +583,7 @@ export const CHANNEL_FORM_DEFAULT_VALUES: ChannelFormValues = {
   batch_add_set_key_prefix_2_name: false,
   key_mode: 'append',
   // Channel extra settings
+  cache_billing_adjustments: '',
   force_format: false,
   thinking_to_content: false,
   proxy: '',
@@ -599,6 +635,7 @@ export function transformChannelToFormDefaults(
     task_plugin_key: '',
     task_extend_plugin_keys: [] as string[],
     request_plugins: [] as string[],
+    cache_billing_adjustments: '',
     force_format: false,
     thinking_to_content: false,
     proxy: '',
@@ -626,6 +663,10 @@ export function transformChannelToFormDefaults(
               (id: unknown): id is string => typeof id === 'string'
             )
           : [],
+        cache_billing_adjustments:
+          parsed.cache_billing_adjustments == null
+            ? ''
+            : JSON.stringify(parsed.cache_billing_adjustments, null, 2),
         force_format: parsed.force_format || false,
         thinking_to_content: parsed.thinking_to_content || false,
         proxy: parsed.proxy || '',
@@ -792,6 +833,16 @@ export function buildSettingJSON(formData: ChannelFormValues): string {
       formData.responses_websocket_enabled === true,
     system_prompt: formData.system_prompt || '',
     system_prompt_override: formData.system_prompt_override || false,
+  }
+
+  const cacheBillingAdjustments = parseOptionalJson(
+    formData.cache_billing_adjustments
+  )
+  if (
+    isJsonObjectValue(cacheBillingAdjustments) &&
+    Object.keys(cacheBillingAdjustments).length > 0
+  ) {
+    settingObj.cache_billing_adjustments = cacheBillingAdjustments
   }
 
   const protocol = normalizeHttpProtocol(formData.http_protocol)
