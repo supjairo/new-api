@@ -128,7 +128,7 @@ function isOptionalJsonObject(value: string | undefined): boolean {
   }
 }
 
-function isOptionalCacheBillingAdjustments(value: string | undefined): boolean {
+function isOptionalUpstreamCacheRateControl(value: string | undefined): boolean {
   try {
     const parsed = parseOptionalJson(value)
     if (parsed === undefined) return true
@@ -371,8 +371,8 @@ export const channelFormSchema = z
       .string()
       .optional()
       .refine(
-        isOptionalCacheBillingAdjustments,
-        'Cache billing adjustments must be a JSON object with non-empty model names and object rules containing only read_percent numbers from 0 to 100, or null'
+        isOptionalUpstreamCacheRateControl,
+        'Upstream model cache rate control must be a JSON object with non-empty model names and object rules containing only read_percent numbers from 0 to 100, or null'
       ),
     force_format: z.boolean().optional(),
     thinking_to_content: z.boolean().optional(),
@@ -789,14 +789,14 @@ export function buildSettingJSON(formData: ChannelFormValues): string {
     system_prompt_override: formData.system_prompt_override || false,
   }
 
-  const cacheBillingAdjustments = parseOptionalJson(
+  const upstreamCacheRateControl = parseOptionalJson(
     formData.cache_billing_adjustments
   )
   if (
-    isJsonObjectValue(cacheBillingAdjustments) &&
-    Object.keys(cacheBillingAdjustments).length > 0
+    isJsonObjectValue(upstreamCacheRateControl) &&
+    Object.keys(upstreamCacheRateControl).length > 0
   ) {
-    settingObj.cache_billing_adjustments = cacheBillingAdjustments
+    settingObj.cache_billing_adjustments = upstreamCacheRateControl
   }
 
   const protocol = normalizeHttpProtocol(formData.http_protocol)
