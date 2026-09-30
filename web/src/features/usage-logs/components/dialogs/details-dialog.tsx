@@ -64,7 +64,12 @@ import { pluginUsageSchema } from '@/features/pricing/lib/plugin-pricing'
 import { PolicyDecisionRecord } from '@/features/system-settings/request-policies/decision-record'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 import { formatBillingCurrencyFromUSD } from '@/lib/currency'
-import { formatLogQuota, formatTokens, formatUseTime } from '@/lib/format'
+import {
+  formatLogQuota,
+  formatNumber,
+  formatTokens,
+  formatUseTime,
+} from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 import { AuditDetailFields } from '../../audit/components/audit-detail-fields'
@@ -520,6 +525,10 @@ export function DetailsDialog(props: DetailsDialogProps) {
   const showAdminIp =
     !!props.log.ip && (showTiming || (props.isAdmin && isTopup))
   const adminInfo = other?.admin_info
+  const cacheRateControl = props.isAdmin
+    ? (adminInfo?.upstream_cache_rate_control ??
+      adminInfo?.cache_billing_adjustment)
+    : undefined
   const topupAuditFields =
     isTopup && props.isAdmin && adminInfo
       ? ([
@@ -1194,6 +1203,32 @@ export function DetailsDialog(props: DetailsDialogProps) {
         {/* Token breakdown (for consume/error types with token data) */}
         {isDisplayableType(props.log.type) && other && (
           <TokenBreakdown log={props.log} other={other} />
+        )}
+
+        {/* Upstream cache rate control (admin only) */}
+        {cacheRateControl && (
+          <DetailSection label={t('Cache Rate Control')}>
+            <DetailRow
+              label={t('Controlled model')}
+              value={cacheRateControl.model}
+              mono
+            />
+            <DetailRow
+              label={t('Read cache percent')}
+              value={`${cacheRateControl.read_percent}%`}
+              mono
+            />
+            <DetailRow
+              label={t('Original cache read')}
+              value={formatNumber(cacheRateControl.original_read)}
+              mono
+            />
+            <DetailRow
+              label={t('Adjusted cache read')}
+              value={formatNumber(cacheRateControl.adjusted_read)}
+              mono
+            />
+          </DetailSection>
         )}
 
         {/* Billing breakdown (consume type) */}
