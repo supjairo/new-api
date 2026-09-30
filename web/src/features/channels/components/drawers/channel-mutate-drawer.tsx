@@ -296,6 +296,7 @@ const SENSITIVE_FORM_FIELDS = [
   'azure_responses_version',
   'force_format',
   'thinking_to_content',
+  'cache_billing_adjustments',
   'proxy',
   'http_protocol',
   'http2_connection_shards',
@@ -1792,6 +1793,47 @@ export function ChannelMutateDrawer({
       }
     },
     [onOpenChange, form, isSubmitting, showProviderPicker, providerTarget]
+  )
+
+  const cacheBillingAdjustmentFields = (
+    <FormField
+      control={form.control}
+      name='cache_billing_adjustments'
+      render={({ field }) => (
+        <FormItem className='space-y-3 border-t pt-4'>
+          <FormLabel>{t('Model cache billing adjustments')}</FormLabel>
+          <FormDescription>
+            {t(
+              'Match client model names exactly (case-sensitive), not upstream mappings or billing aliases. Only read_percent is supported; decimals from 0 to 100 are allowed, and missing or null percentages default to 100. Leave empty or use {} to clear all rules.'
+            )}
+          </FormDescription>
+          <FormControl>
+            <JsonCodeEditor
+              value={field.value || ''}
+              onChange={field.onChange}
+              name={field.name}
+              onBlur={field.onBlur}
+              textareaRef={field.ref}
+              disabled={sensitiveLocked || isSubmitting}
+              placeholder={JSON.stringify(
+                {
+                  'model-a': { read_percent: 10 },
+                  'model-b': { read_percent: 12.5 },
+                },
+                null,
+                2
+              )}
+            />
+          </FormControl>
+          <FormDescription>
+            {t(
+              'Applies only to HTTP/SSE text billing for Chat/Completions, Responses (including Compact), Claude, and Gemini. Requests with audio usage and standalone audio, Realtime, image, and task billing are excluded. Cache reads are reduced and rounded down before the existing billing calculation. Input, output, and cache write quantities stay unchanged. The existing pricing rules split ordinary input automatically.'
+            )}
+          </FormDescription>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
   )
 
   const proxyFields = (
@@ -4857,6 +4899,7 @@ export function ChannelMutateDrawer({
                 {proxyFields}
                 {httpProtocolFields}
                 {httpShardsFields}
+                {cacheBillingAdjustmentFields}
               </fieldset>
             </div>
             {upstreamModelDetectionFields}

@@ -81,6 +81,7 @@ const CONFIGURATION_BLOCKS = {
   extraSettings: {
     section: 'other',
     fields: [
+      'cache_billing_adjustments',
       'proxy',
       'http_protocol',
       'http2_connection_shards',
@@ -172,6 +173,7 @@ export function getChannelConfigurationState(
           (values.type === 14 && values.claude_beta_query)))
     ),
     extraSettings: Boolean(
+      hasConfiguredJson(values.cache_billing_adjustments) ||
       values.proxy?.trim() ||
       (values.http_protocol && values.http_protocol !== 'auto') ||
       (values.http2_connection_shards ?? 1) > 1 ||

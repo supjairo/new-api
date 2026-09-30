@@ -90,7 +90,132 @@ func TestFixedPriceBillingDatabaseMatrix(t *testing.T) {
 			require.NoError(t, db.Raw(versionQuery).Scan(&version).Error)
 			t.Logf("database: %s", version)
 			runFixedPriceAccountingCases(t, db, logDB)
+			runCacheReadAccountingCases(t, db, logDB)
 		})
+	}
+}
+
+func runCacheReadAccountingCases(t *testing.T, db, logDB *gorm.DB) {
+	for index, tc := range []struct {
+		name, expr string
+		percent    float64
+		want       int
+	}{
+		{"read", "", 10, 1006},
+		{"unchanged", "", 100, 925},
+		{"separate", `tier("base", p * 2 + cr * 0.2 + c * 2)`, 10, 1001},
+		{"fallback", `tier("base", p * 2 + c * 2)`, 10, 1010},
+	} {
+		t.Run("cache read "+tc.name, func(t *testing.T) {
+			user := model.User{Username: fmt.Sprintf("cache_read_%d", index), Quota: 100000, Status: common.UserStatusEnabled}
+			require.NoError(t, db.Create(&user).Error)
+			token := model.Token{UserId: user.Id, Key: fmt.Sprintf("cache-read-%d", index), RemainQuota: 100000, Status: common.TokenStatusEnabled}
+			require.NoError(t, db.Create(&token).Error)
+			channel := model.Channel{Name: "cache-read", Key: "unused"}
+			channel.SetSetting(dto.ChannelSettings{CacheBillingAdjustments: map[string]*dto.CacheBillingAdjustment{"client": {ReadPercent: &tc.percent}}})
+			require.NoError(t, channel.ValidateSettings())
+			require.NoError(t, db.Create(&channel).Error)
+			t.Cleanup(func() {
+				require.NoError(t, logDB.Where("user_id = ?", user.Id).Delete(&model.Log{}).Error)
+				require.NoError(t, db.Unscoped().Delete(&token).Error)
+				require.NoError(t, db.Unscoped().Delete(&user).Error)
+				require.NoError(t, db.Delete(&channel).Error)
+			})
+			var loaded model.Channel
+			require.NoError(t, db.First(&loaded, channel.Id).Error)
+			assert.Equal(t, channel.GetSetting(), loaded.GetSetting())
+			info := &relaycommon.RelayInfo{UserId: user.Id, TokenId: token.Id, TokenKey: token.Key, OriginModelName: "client", RelayMode: relayconstant.RelayModeChatCompletions, RelayFormat: types.RelayFormatOpenAI, StartTime: time.Now(), ForcePreConsume: true, UserSetting: dto.UserSetting{BillingPreference: "wallet_only"}, UserGroup: "default", UsingGroup: "default", ChannelMeta: &relaycommon.ChannelMeta{ChannelId: channel.Id, ChannelSetting: loaded.GetSetting()}, PriceData: hosttypes.PriceData{ModelRatio: 1, CacheRatio: 0.1, CacheCreationRatio: 1.25, CompletionRatio: 1, GroupRatioInfo: hosttypes.GroupRatioInfo{GroupRatio: 1}}}
+			if tc.expr != "" {
+				info.TieredBillingSnapshot = &billingexpr.BillingSnapshot{BillingMode: "tiered_expr", ExprString: tc.expr, ExprHash: billingexpr.ExprHashString(tc.expr), GroupRatio: 1, QuotaPerUnit: common.QuotaPerUnit, EstimatedQuotaAfterGroup: 1000}
+			}
+			ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
+			ctx.Request = httptest.NewRequest("POST", "/v1/chat/completions", nil)
+			require.Nil(t, PreConsumeBilling(ctx, 1000, info))
+			usage := &dto.Usage{PromptTokens: 1000, CompletionTokens: 10, TotalTokens: 1010, PromptTokensDetails: dto.InputTokenDetails{CachedTokens: 100, CacheWriteTokens: 20}}
+			usage.BillingUsage = dto.NewOpenAIChatBillingUsage(usage)
+			PostTextConsumeQuota(ctx, info, usage, nil)
+			assert.Equal(t, 100, usage.PromptTokensDetails.CachedTokens)
+			assert.Equal(t, 20, usage.PromptTokensDetails.CacheWriteTokens)
+			assert.Equal(t, 100, usage.BillingUsage.OpenAIUsage.PromptTokensDetails.CachedTokens)
+			var log model.Log
+			require.NoError(t, logDB.Where("user_id = ?", user.Id).Take(&log).Error)
+			assert.Equal(t, tc.want, log.Quota)
+			var other map[string]any
+			require.NoError(t, common.UnmarshalJsonStr(log.Other, &other))
+			assert.Equal(t, float64(20), other["cache_write_tokens"])
+			if tc.percent == 10 {
+				assert.Equal(t, float64(10), other["cache_tokens"])
+				admin, ok := other["admin_info"].(map[string]any)
+				require.True(t, ok)
+				audit, ok := admin["cache_billing_adjustment"].(map[string]any)
+				require.True(t, ok)
+				assert.Equal(t, float64(100), audit["original_read"])
+				assert.Equal(t, float64(10), audit["adjusted_read"])
+				assert.NotContains(t, audit, "write_percent")
+			}
+			require.NoError(t, db.First(&user, user.Id).Error)
+			require.NoError(t, db.First(&token, token.Id).Error)
+			assert.Equal(t, 100000-tc.want, user.Quota)
+			assert.Equal(t, 100000-tc.want, token.RemainQuota)
+			channel.SetSetting(dto.ChannelSettings{})
+			require.NoError(t, db.Model(&channel).Update("setting", channel.Setting).Error)
+			require.NoError(t, db.First(&loaded, channel.Id).Error)
+			assert.Empty(t, loaded.GetSetting().CacheBillingAdjustments)
+		})
+	}
+}
+
+func TestCacheReadAdjustmentContracts(t *testing.T) {
+	ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
+	info := &relaycommon.RelayInfo{OriginModelName: "client", RelayMode: relayconstant.RelayModeChatCompletions, StartTime: time.Now(), ChannelMeta: &relaycommon.ChannelMeta{ChannelSetting: dto.ChannelSettings{CacheBillingAdjustments: map[string]*dto.CacheBillingAdjustment{"client": {ReadPercent: common.GetPointer(10.0)}}}}, PriceData: hosttypes.PriceData{ModelRatio: 1, CacheRatio: 0.1, CacheCreationRatio: 1.25, CacheCreation5mRatio: 2, CacheCreation1hRatio: 3, GroupRatioInfo: hosttypes.GroupRatioInfo{GroupRatio: 1}}}
+	usage := &dto.Usage{PromptTokens: 1000, CompletionTokens: 10, TotalTokens: 1010, PromptTokensDetails: dto.InputTokenDetails{CachedTokens: 100, CachedCreationTokens: 30, CacheWriteTokens: 40}, ClaudeCacheCreation5mTokens: 13, ClaudeCacheCreation1hTokens: 17}
+	a := newCacheBillingAdjustment(info, usage)
+	require.NotNil(t, a)
+	adjusted := adjustedBillingUsage(info, usage, a)
+	assert.Equal(t, 10, adjusted.PromptTokensDetails.CachedTokens)
+	assert.Equal(t, 30, adjusted.PromptTokensDetails.CachedCreationTokens)
+	assert.Equal(t, 40, adjusted.PromptTokensDetails.CacheWriteTokens)
+	assert.Equal(t, 13, adjusted.ClaudeCacheCreation5mTokens)
+	assert.Equal(t, 17, adjusted.ClaudeCacheCreation1hTokens)
+	assert.Equal(t, 100, usage.PromptTokensDetails.CachedTokens)
+	assert.Equal(t, 990.0, BuildTieredTokenParams(adjusted, false, map[string]bool{"cr": true}).P)
+	assert.Equal(t, 1000.0, BuildTieredTokenParams(adjusted, false, nil).P)
+	adjusted.UsageSemantic = "anthropic"
+	params := BuildTieredTokenParams(adjusted, true, map[string]bool{"cr": true})
+	assert.Equal(t, 1000.0, params.P)
+	assert.Equal(t, 1040.0, params.Len)
+	assert.Equal(t, 13.0, params.CC)
+	assert.Equal(t, 17.0, params.CC1h)
+	assert.Equal(t, 1010.0, BuildTieredTokenParams(adjusted, true, nil).P)
+	for _, mode := range []int{relayconstant.RelayModeImagesGenerations, relayconstant.RelayModeAudioSpeech, relayconstant.RelayModeRealtime, relayconstant.RelayModeEmbeddings} {
+		info.RelayMode = mode
+		assert.Nil(t, newCacheBillingAdjustment(info, usage))
+	}
+	info.RelayMode = relayconstant.RelayModeChatCompletions
+	info.OriginModelName = "Client"
+	assert.Nil(t, newCacheBillingAdjustment(info, usage))
+	info.OriginModelName = "client"
+	info.ChannelSetting.CacheBillingAdjustments["client"].ReadPercent = common.GetPointer(100.0)
+	assert.Nil(t, newCacheBillingAdjustment(info, usage))
+	assert.Same(t, usage, adjustedBillingUsage(info, usage, &cacheBillingAdjustment{ReadPercent: 100}))
+	info.ChannelType = constant.ChannelTypeOpenRouter
+	info.OriginModelName = "claude-3-7-sonnet-20250219"
+	info.FinalRequestRelayFormat = types.RelayFormatClaude
+	info.PriceData.ModelRatio, info.PriceData.CacheCreationRatio = 1.5, 2
+	upstream := &dto.Usage{PromptTokens: 300, CompletionTokens: 10, Cost: 0.00072, PromptTokensDetails: dto.InputTokenDetails{CachedTokens: 100}}
+	adjusted = adjustedBillingUsage(info, upstream, &cacheBillingAdjustment{ReadPercent: 10})
+	summary := calculateTextQuotaSummary(ctx, info, adjusted)
+	inferred := CalcOpenRouterCacheCreateTokens(*adjusted, info.PriceData)
+	if inferred >= 0 && 290 >= inferred {
+		assert.Equal(t, inferred, summary.CacheCreationTokens)
+	} else {
+		assert.Zero(t, summary.CacheCreationTokens)
+	}
+	assert.Zero(t, adjusted.PromptTokensDetails.CacheCreationTokensTotal())
+	assert.Equal(t, upstream.Cost, adjusted.Cost)
+	for _, body := range []string{`{"cache_billing_adjustments":{"client":{"write_percent":10}}}`, `{"cache_billing_adjustments":{"client":{"read_percent":101}}}`} {
+		channel := model.Channel{Setting: &body}
+		require.Error(t, channel.ValidateSettings())
 	}
 }
 

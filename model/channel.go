@@ -1007,6 +1007,27 @@ func SearchTags(keyword string, group string, model string, idSort bool) ([]*str
 func (channel *Channel) ValidateSettings() error {
 	channelParams := &dto.ChannelSettings{}
 	if channel.Setting != nil && *channel.Setting != "" {
+		var raw map[string]json.RawMessage
+		if err := common.UnmarshalJsonStr(*channel.Setting, &raw); err != nil {
+			return err
+		}
+		if data := raw["cache_billing_adjustments"]; data != nil {
+			var rules map[string]json.RawMessage
+			if err := common.Unmarshal(data, &rules); err != nil {
+				return fmt.Errorf("cache_billing_adjustments must be a model map: %w", err)
+			}
+			for name, data := range rules {
+				var fields map[string]json.RawMessage
+				if err := common.Unmarshal(data, &fields); err != nil {
+					return fmt.Errorf("cache_billing_adjustments[%q]: %w", name, err)
+				}
+				for field := range fields {
+					if field != "read_percent" {
+						return fmt.Errorf("cache_billing_adjustments[%q]: unknown field %q", name, field)
+					}
+				}
+			}
+		}
 		err := common.Unmarshal([]byte(*channel.Setting), channelParams)
 		if err != nil {
 			return err
@@ -1016,6 +1037,9 @@ func (channel *Channel) ValidateSettings() error {
 		return fmt.Errorf("invalid channel proxy: %w", err)
 	}
 	if err := channelParams.ValidateHTTPTransport(); err != nil {
+		return err
+	}
+	if err := channelParams.ValidateCacheBillingAdjustments(); err != nil {
 		return err
 	}
 	channelOtherSettings := &dto.ChannelOtherSettings{}

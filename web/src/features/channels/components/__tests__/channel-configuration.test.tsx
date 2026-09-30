@@ -47,6 +47,12 @@ import {
   CHANNEL_TYPE_SGLANG,
   CHANNEL_TYPE_VLLM,
 } from '../../constants'
+import {
+  CHANNEL_FORM_DEFAULT_VALUES,
+  buildSettingJSON,
+  channelFormSchema,
+  transformChannelToFormDefaults,
+} from '../../lib/channel-form'
 import { channelSchema, type Channel } from '../../types'
 import { ChannelPluginExtensions } from '../channel-plugin-extensions'
 import { ChannelsProvider } from '../channels-provider'
@@ -2811,4 +2817,215 @@ test('a New API channel binds upstream task plugins and publishes their models',
   expect(setting).toMatchObject({ task_extend_plugin_keys: ['video-b'] })
   expect(setting).not.toHaveProperty('task_plugin_key')
   expect(payload.models?.split(',').sort()).toEqual(['gpt-5', 'video-b-1'])
+})
+
+test.each([
+  ['empty', '', true],
+  ['empty object', '{}', true],
+  ['defaults', '{"Model-A":{}," model-b ":{"read_percent":null}}', true],
+  [
+    'zero and decimals',
+    '{"model-a":{"read_percent":0},"model-b":{"read_percent":12.5}}',
+    true,
+  ],
+  ['invalid JSON', '{', false],
+  ['array', '[]', false],
+  ['null map', 'null', false],
+  ['blank model', '{"  ":{}}', false],
+  ['null rule', '{"model-a":null}', false],
+  ['array rule', '{"model-a":[]}', false],
+  ['numeric rule', '{"model-a":50}', false],
+  ['string percentage', '{"model-a":{"read_percent":"10"}}', false],
+  ['boolean percentage', '{"model-a":{"write_percent":false}}', false],
+  ['array percentage', '{"model-a":{"read_percent":[]}}', false],
+  ['object percentage', '{"model-a":{"write_percent":{}}}', false],
+  ['negative percentage', '{"model-a":{"read_percent":-0.1}}', false],
+  ['over 100', '{"model-a":{"write_percent":100.1}}', false],
+  ['non-finite percentage', '{"model-a":{"read_percent":1e999}}', false],
+  ['unknown field', '{"model-a":{"percent":10}}', false],
+  ['write percent rejected', '{"model-a":{"write_percent":10}}', false],
+])(
+  'cache billing adjustments validate %s without coercing values',
+  (_case, value, valid) => {
+    const result = channelFormSchema.safeParse({
+      ...CHANNEL_FORM_DEFAULT_VALUES,
+      name: 'Cache channel',
+      models: 'model-a',
+      cache_billing_adjustments: value,
+    })
+    expect(result.success).toBe(valid)
+    if (!result.success) {
+      expect(result.error.issues[0]?.path).toEqual([
+        'cache_billing_adjustments',
+      ])
+    }
+  }
+)
+
+test('cache billing adjustments round-trip model names, defaults, zero and decimals without losing rules on another save', () => {
+  const rules = {
+    'Model-A': { read_percent: 12.5 },
+    ' model-b ': { read_percent: null },
+    'model-c': {},
+  }
+  editingChannel.setting = JSON.stringify({ cache_billing_adjustments: rules })
+  const defaults = transformChannelToFormDefaults(editingChannel)
+  expect(JSON.parse(defaults.cache_billing_adjustments ?? '{}')).toEqual(rules)
+  const setting = buildSettingJSON(defaults)
+  const reloaded = transformChannelToFormDefaults({
+    ...editingChannel,
+    setting,
+  })
+  expect(
+    JSON.parse(buildSettingJSON({ ...reloaded, name: 'Renamed' }))
+      .cache_billing_adjustments
+  ).toEqual(rules)
+})
+
+test('cache billing JSON edits survive a failed save and background refresh, then are submitted unchanged', async () => {
+  const savedRules = {
+    'custom-model': { read_percent: 50 },
+  }
+  editingChannel.setting = JSON.stringify({
+    cache_billing_adjustments: savedRules,
+  })
+  const put = vi
+    .spyOn(api, 'put')
+    .mockResolvedValueOnce({
+      data: { success: false, message: 'Update failed' },
+    })
+    .mockResolvedValueOnce({ data: { success: true } })
+  const user = userEvent.setup()
+  render(<ConfigurationHarness currentRow={editingChannel} />)
+  await screen.findByDisplayValue('Existing channel')
+  await user.click(screen.getByRole('tab', { name: /Other Settings/ }))
+  const editor = screen.getByRole('textbox', {
+    name: 'Model cache billing adjustments',
+  }) as HTMLTextAreaElement
+  expect(JSON.parse(editor.value)).toEqual(savedRules)
+  const draft = '{"custom-model":{"read_percent":12.5}}'
+  fireEvent.input(editor, { target: { value: draft } })
+  await user.click(screen.getByRole('button', { name: 'Update Channel' }))
+  await waitFor(() => expect(put).toHaveBeenCalledTimes(1))
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Update Channel' })).toBeEnabled()
+  )
+  await act(async () => {
+    await client.refetchQueries({ queryKey: ['channels'] })
+  })
+  expect(editor).toHaveValue(draft)
+  await user.click(screen.getByRole('button', { name: 'Update Channel' }))
+  await waitFor(() => expect(put).toHaveBeenCalledTimes(2))
+  for (const [, payload] of put.mock.calls) {
+    expect(
+      JSON.parse((payload as { setting: string }).setting)
+        .cache_billing_adjustments
+    ).toEqual({
+      'custom-model': { read_percent: 12.5 },
+    })
+  }
+})
+
+test('invalid cache billing rules are revealed in Other Settings and block saving until corrected', async () => {
+  const put = vi
+    .spyOn(api, 'put')
+    .mockResolvedValue({ data: { success: true } })
+  const user = userEvent.setup()
+  render(<ConfigurationHarness currentRow={editingChannel} />)
+  await screen.findByDisplayValue('Existing channel')
+  await user.click(screen.getByRole('tab', { name: /Other Settings/ }))
+  fireEvent.input(
+    screen.getByRole('textbox', { name: 'Model cache billing adjustments' }),
+    {
+      target: { value: '{"custom-model":{"read_percent":"10"}}' },
+    }
+  )
+  await user.click(screen.getByRole('tab', { name: /Connection & Models/ }))
+  await user.click(screen.getByRole('button', { name: 'Update Channel' }))
+  const editor = await screen.findByRole('textbox', {
+    name: 'Model cache billing adjustments',
+  })
+  await waitFor(() => expect(editor).toHaveFocus())
+  expect(editor).toHaveAttribute('aria-invalid', 'true')
+  expect(
+    screen.getByRole('tab', { name: /Other Settings/ })
+  ).toHaveAccessibleName(/Error/)
+  expect(
+    screen.getByText(/Cache billing adjustments must be a JSON object/)
+  ).toBeVisible()
+  expect(put).not.toHaveBeenCalled()
+  fireEvent.input(editor, {
+    target: { value: '{"custom-model":{"read_percent":10}}' },
+  })
+  await waitFor(() =>
+    expect(editor).not.toHaveAttribute('aria-invalid', 'true')
+  )
+  await user.click(screen.getByRole('button', { name: 'Update Channel' }))
+  await waitFor(() => expect(put).toHaveBeenCalled())
+})
+
+test.each(['', '{}'])(
+  'clearing cache billing rules with %j removes them from the API setting',
+  async (draft) => {
+    editingChannel.setting =
+      '{"cache_billing_adjustments":{"custom-model":{"read_percent":0}}}'
+    const put = vi
+      .spyOn(api, 'put')
+      .mockResolvedValue({ data: { success: true } })
+    const user = userEvent.setup()
+    render(<ConfigurationHarness currentRow={editingChannel} />)
+    await screen.findByDisplayValue('Existing channel')
+    await user.click(screen.getByRole('tab', { name: /Other Settings/ }))
+    fireEvent.input(
+      screen.getByRole('textbox', { name: 'Model cache billing adjustments' }),
+      {
+        target: { value: draft },
+      }
+    )
+    expect(
+      screen.getByRole('tab', { name: /Other Settings/ })
+    ).not.toHaveAccessibleName(/Configured/)
+    await user.click(screen.getByRole('button', { name: 'Update Channel' }))
+    await waitFor(() => expect(put).toHaveBeenCalled())
+    expect(
+      JSON.parse((put.mock.calls[0][1] as { setting: string }).setting)
+    ).not.toHaveProperty('cache_billing_adjustments')
+  }
+)
+
+test('cache billing rules are disabled without sensitive write permission and omitted from ordinary updates', async () => {
+  editingChannel.setting =
+    '{"cache_billing_adjustments":{"custom-model":{"read_percent":0}}}'
+  useAuthStore.setState({
+    auth: {
+      ...originalAuth,
+      user: {
+        id: 10,
+        username: 'operator',
+        role: ROLE.ADMIN,
+        permissions: {
+          admin_permissions: {
+            channel: { read: true, write: true, operate: true },
+          },
+        },
+      },
+    },
+  })
+  const put = vi
+    .spyOn(api, 'put')
+    .mockResolvedValue({ data: { success: true } })
+  const user = userEvent.setup()
+  render(<ConfigurationHarness currentRow={editingChannel} />)
+  await screen.findByDisplayValue('Existing channel')
+  await user.click(screen.getByRole('tab', { name: /Other Settings/ }))
+  const editor = screen.getByRole('textbox', {
+    name: 'Model cache billing adjustments',
+  })
+  expect(editor).toBeDisabled()
+  expect(JSON.parse((editor as HTMLTextAreaElement).value)).toEqual({
+    'custom-model': { read_percent: 0 },
+  })
+  await user.click(screen.getByRole('button', { name: 'Update Channel' }))
+  await waitFor(() => expect(put).toHaveBeenCalled())
+  expect(put.mock.calls[0]?.[1]).not.toHaveProperty('setting')
 })
