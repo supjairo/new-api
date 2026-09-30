@@ -114,6 +114,16 @@ export interface ToolSurchargeItem {
   price: number
 }
 
+// How much of the upstream-reported read cache counted towards billing for
+// one request: `read_percent` is the applied percentage of the original read
+// cache that remains billable (adjusted_read = original_read * read_percent).
+export interface UpstreamCacheRateControlInfo {
+  model: string
+  read_percent: number
+  original_read: number
+  adjusted_read: number
+}
+
 // One side of an error response override rewrite: the wire-format error as it
 // arrived from upstream (original, message masked) or as the client received
 // it (overridden).
@@ -166,6 +176,12 @@ export interface LogOtherData {
     // Reject / intercept reason (admin only)
     reject_reason?: string
     task_plugin?: TaskPluginInfo
+    // Upstream cache rate control applied to this request's cache-read
+    // billing. Admin-only (nested under admin_info).
+    upstream_cache_rate_control?: UpstreamCacheRateControlInfo
+    // Legacy field name for upstream_cache_rate_control; kept so historical
+    // logs written before the rename still render.
+    cache_billing_adjustment?: UpstreamCacheRateControlInfo
   }
   root_info?: {
     task_plugin?: TaskPluginRuntimeInfo
