@@ -2991,7 +2991,7 @@ test.each([
   ['unknown field', '{"model-a":{"percent":10}}', false],
   ['write percent rejected', '{"model-a":{"write_percent":10}}', false],
 ])(
-  'cache billing adjustments validate %s without coercing values',
+  'upstream model cache rate control validates %s without coercing values',
   (_case, value, valid) => {
     const result = channelFormSchema.safeParse({
       ...CHANNEL_FORM_DEFAULT_VALUES,
@@ -3008,7 +3008,7 @@ test.each([
   }
 )
 
-test('cache billing adjustments round-trip model names, defaults, zero and decimals without losing rules on another save', () => {
+test('upstream model cache rate control round-trips model names, defaults, zero and decimals without losing rules on another save', () => {
   const rules = {
     'Model-A': { read_percent: 12.5 },
     ' model-b ': { read_percent: null },
@@ -3028,7 +3028,7 @@ test('cache billing adjustments round-trip model names, defaults, zero and decim
   ).toEqual(rules)
 })
 
-test('cache billing JSON edits survive a failed save and background refresh, then are submitted unchanged', async () => {
+test('upstream model cache rate control JSON edits survive a failed save and background refresh, then are submitted unchanged', async () => {
   const savedRules = {
     'custom-model': { read_percent: 50 },
   }
@@ -3046,7 +3046,7 @@ test('cache billing JSON edits survive a failed save and background refresh, the
   await screen.findByDisplayValue('Existing channel')
   await user.click(screen.getByRole('tab', { name: /Other Settings/ }))
   const editor = screen.getByRole('textbox', {
-    name: 'Model cache billing adjustments',
+    name: 'Upstream model cache rate control',
   }) as HTMLTextAreaElement
   expect(JSON.parse(editor.value)).toEqual(savedRules)
   const draft = '{"custom-model":{"read_percent":12.5}}'
@@ -3072,7 +3072,7 @@ test('cache billing JSON edits survive a failed save and background refresh, the
   }
 })
 
-test('invalid cache billing rules are revealed in Other Settings and block saving until corrected', async () => {
+test('invalid upstream cache rate rules are revealed in Other Settings and block saving until corrected', async () => {
   const put = vi
     .spyOn(api, 'put')
     .mockResolvedValue({ data: { success: true } })
@@ -3081,7 +3081,7 @@ test('invalid cache billing rules are revealed in Other Settings and block savin
   await screen.findByDisplayValue('Existing channel')
   await user.click(screen.getByRole('tab', { name: /Other Settings/ }))
   fireEvent.input(
-    screen.getByRole('textbox', { name: 'Model cache billing adjustments' }),
+    screen.getByRole('textbox', { name: 'Upstream model cache rate control' }),
     {
       target: { value: '{"custom-model":{"read_percent":"10"}}' },
     }
@@ -3089,7 +3089,7 @@ test('invalid cache billing rules are revealed in Other Settings and block savin
   await user.click(screen.getByRole('tab', { name: /Connection & Models/ }))
   await user.click(screen.getByRole('button', { name: 'Update Channel' }))
   const editor = await screen.findByRole('textbox', {
-    name: 'Model cache billing adjustments',
+    name: 'Upstream model cache rate control',
   })
   await waitFor(() => expect(editor).toHaveFocus())
   expect(editor).toHaveAttribute('aria-invalid', 'true')
@@ -3097,7 +3097,7 @@ test('invalid cache billing rules are revealed in Other Settings and block savin
     screen.getByRole('tab', { name: /Other Settings/ })
   ).toHaveAccessibleName(/Error/)
   expect(
-    screen.getByText(/Cache billing adjustments must be a JSON object/)
+    screen.getByText(/Upstream model cache rate control must be a JSON object/)
   ).toBeVisible()
   expect(put).not.toHaveBeenCalled()
   fireEvent.input(editor, {
@@ -3111,7 +3111,7 @@ test('invalid cache billing rules are revealed in Other Settings and block savin
 })
 
 test.each(['', '{}'])(
-  'clearing cache billing rules with %j removes them from the API setting',
+  'clearing upstream cache rate rules with %j removes them from the API setting',
   async (draft) => {
     editingChannel.setting =
       '{"cache_billing_adjustments":{"custom-model":{"read_percent":0}}}'
@@ -3123,7 +3123,7 @@ test.each(['', '{}'])(
     await screen.findByDisplayValue('Existing channel')
     await user.click(screen.getByRole('tab', { name: /Other Settings/ }))
     fireEvent.input(
-      screen.getByRole('textbox', { name: 'Model cache billing adjustments' }),
+      screen.getByRole('textbox', { name: 'Upstream model cache rate control' }),
       {
         target: { value: draft },
       }
@@ -3139,7 +3139,7 @@ test.each(['', '{}'])(
   }
 )
 
-test('cache billing rules are disabled without sensitive write permission and omitted from ordinary updates', async () => {
+test('upstream cache rate rules are disabled without sensitive write permission and omitted from ordinary updates', async () => {
   editingChannel.setting =
     '{"cache_billing_adjustments":{"custom-model":{"read_percent":0}}}'
   useAuthStore.setState({
@@ -3165,7 +3165,7 @@ test('cache billing rules are disabled without sensitive write permission and om
   await screen.findByDisplayValue('Existing channel')
   await user.click(screen.getByRole('tab', { name: /Other Settings/ }))
   const editor = screen.getByRole('textbox', {
-    name: 'Model cache billing adjustments',
+    name: 'Upstream model cache rate control',
   })
   expect(editor).toBeDisabled()
   expect(JSON.parse((editor as HTMLTextAreaElement).value)).toEqual({

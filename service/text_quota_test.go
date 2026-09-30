@@ -112,7 +112,7 @@ func runCacheReadAccountingCases(t *testing.T, db, logDB *gorm.DB) {
 			token := model.Token{UserId: user.Id, Key: fmt.Sprintf("cache-read-%d", index), RemainQuota: 100000, Status: common.TokenStatusEnabled}
 			require.NoError(t, db.Create(&token).Error)
 			channel := model.Channel{Name: "cache-read", Key: "unused"}
-			channel.SetSetting(dto.ChannelSettings{CacheBillingAdjustments: map[string]*dto.CacheBillingAdjustment{"client": {ReadPercent: &tc.percent}}})
+			channel.SetSetting(dto.ChannelSettings{UpstreamCacheRateControl: map[string]*dto.UpstreamCacheRateControl{"client": {ReadPercent: &tc.percent}}})
 			require.NoError(t, channel.ValidateSettings())
 			require.NoError(t, db.Create(&channel).Error)
 			t.Cleanup(func() {
@@ -147,7 +147,7 @@ func runCacheReadAccountingCases(t *testing.T, db, logDB *gorm.DB) {
 				assert.Equal(t, float64(10), other["cache_tokens"])
 				admin, ok := other["admin_info"].(map[string]any)
 				require.True(t, ok)
-				audit, ok := admin["cache_billing_adjustment"].(map[string]any)
+				audit, ok := admin["upstream_cache_rate_control"].(map[string]any)
 				require.True(t, ok)
 				assert.Equal(t, float64(100), audit["original_read"])
 				assert.Equal(t, float64(10), audit["adjusted_read"])
@@ -160,18 +160,18 @@ func runCacheReadAccountingCases(t *testing.T, db, logDB *gorm.DB) {
 			channel.SetSetting(dto.ChannelSettings{})
 			require.NoError(t, db.Model(&channel).Update("setting", channel.Setting).Error)
 			require.NoError(t, db.First(&loaded, channel.Id).Error)
-			assert.Empty(t, loaded.GetSetting().CacheBillingAdjustments)
+			assert.Empty(t, loaded.GetSetting().UpstreamCacheRateControl)
 		})
 	}
 }
 
 func TestCacheReadAdjustmentContracts(t *testing.T) {
 	ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
-	info := &relaycommon.RelayInfo{OriginModelName: "client", RelayMode: relayconstant.RelayModeChatCompletions, StartTime: time.Now(), ChannelMeta: &relaycommon.ChannelMeta{ChannelSetting: dto.ChannelSettings{CacheBillingAdjustments: map[string]*dto.CacheBillingAdjustment{"client": {ReadPercent: common.GetPointer(10.0)}}}}, PriceData: hosttypes.PriceData{ModelRatio: 1, CacheRatio: 0.1, CacheCreationRatio: 1.25, CacheCreation5mRatio: 2, CacheCreation1hRatio: 3, GroupRatioInfo: hosttypes.GroupRatioInfo{GroupRatio: 1}}}
+	info := &relaycommon.RelayInfo{OriginModelName: "client", RelayMode: relayconstant.RelayModeChatCompletions, StartTime: time.Now(), ChannelMeta: &relaycommon.ChannelMeta{ChannelSetting: dto.ChannelSettings{UpstreamCacheRateControl: map[string]*dto.UpstreamCacheRateControl{"client": {ReadPercent: common.GetPointer(10.0)}}}}, PriceData: hosttypes.PriceData{ModelRatio: 1, CacheRatio: 0.1, CacheCreationRatio: 1.25, CacheCreation5mRatio: 2, CacheCreation1hRatio: 3, GroupRatioInfo: hosttypes.GroupRatioInfo{GroupRatio: 1}}}
 	usage := &dto.Usage{PromptTokens: 1000, CompletionTokens: 10, TotalTokens: 1010, PromptTokensDetails: dto.InputTokenDetails{CachedTokens: 100, CachedCreationTokens: 30, CacheWriteTokens: 40}, ClaudeCacheCreation5mTokens: 13, ClaudeCacheCreation1hTokens: 17}
-	a := newCacheBillingAdjustment(info, usage)
+	a := newUpstreamCacheRateControl(info, usage)
 	require.NotNil(t, a)
-	adjusted := adjustedBillingUsage(info, usage, a)
+	adjusted := controlledBillingUsage(info, usage, a)
 	assert.Equal(t, 10, adjusted.PromptTokensDetails.CachedTokens)
 	assert.Equal(t, 30, adjusted.PromptTokensDetails.CachedCreationTokens)
 	assert.Equal(t, 40, adjusted.PromptTokensDetails.CacheWriteTokens)
@@ -189,21 +189,21 @@ func TestCacheReadAdjustmentContracts(t *testing.T) {
 	assert.Equal(t, 1010.0, BuildTieredTokenParams(adjusted, true, nil).P)
 	for _, mode := range []int{relayconstant.RelayModeImagesGenerations, relayconstant.RelayModeAudioSpeech, relayconstant.RelayModeRealtime, relayconstant.RelayModeEmbeddings} {
 		info.RelayMode = mode
-		assert.Nil(t, newCacheBillingAdjustment(info, usage))
+		assert.Nil(t, newUpstreamCacheRateControl(info, usage))
 	}
 	info.RelayMode = relayconstant.RelayModeChatCompletions
 	info.OriginModelName = "Client"
-	assert.Nil(t, newCacheBillingAdjustment(info, usage))
+	assert.Nil(t, newUpstreamCacheRateControl(info, usage))
 	info.OriginModelName = "client"
-	info.ChannelSetting.CacheBillingAdjustments["client"].ReadPercent = common.GetPointer(100.0)
-	assert.Nil(t, newCacheBillingAdjustment(info, usage))
-	assert.Same(t, usage, adjustedBillingUsage(info, usage, &cacheBillingAdjustment{ReadPercent: 100}))
+	info.ChannelSetting.UpstreamCacheRateControl["client"].ReadPercent = common.GetPointer(100.0)
+	assert.Nil(t, newUpstreamCacheRateControl(info, usage))
+	assert.Same(t, usage, controlledBillingUsage(info, usage, &upstreamCacheRateControl{ReadPercent: 100}))
 	info.ChannelType = constant.ChannelTypeOpenRouter
 	info.OriginModelName = "claude-3-7-sonnet-20250219"
 	info.FinalRequestRelayFormat = types.RelayFormatClaude
 	info.PriceData.ModelRatio, info.PriceData.CacheCreationRatio = 1.5, 2
 	upstream := &dto.Usage{PromptTokens: 300, CompletionTokens: 10, Cost: 0.00072, PromptTokensDetails: dto.InputTokenDetails{CachedTokens: 100}}
-	adjusted = adjustedBillingUsage(info, upstream, &cacheBillingAdjustment{ReadPercent: 10})
+	adjusted = controlledBillingUsage(info, upstream, &upstreamCacheRateControl{ReadPercent: 10})
 	summary := calculateTextQuotaSummary(ctx, info, adjusted)
 	inferred := CalcOpenRouterCacheCreateTokens(*adjusted, info.PriceData)
 	if inferred >= 0 && 290 >= inferred {

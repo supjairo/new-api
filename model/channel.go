@@ -1044,7 +1044,7 @@ func (channel *Channel) ValidateSettings() error {
 	if err := channelParams.ValidateHTTPTransport(); err != nil {
 		return err
 	}
-	if err := channelParams.ValidateCacheBillingAdjustments(); err != nil {
+	if err := channelParams.ValidateUpstreamCacheRateControl(); err != nil {
 		return err
 	}
 	channelOtherSettings := &dto.ChannelOtherSettings{}
