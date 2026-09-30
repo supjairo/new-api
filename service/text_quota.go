@@ -557,15 +557,11 @@ func PostTextConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, us
 			tieredBillingApplied = true
 			tieredResult = tieredRes
 			summary.FixedPriceBilling = isFixedPriceSettlement(relayInfo, tieredRes)
-			if control != nil {
-				if tieredRes == nil || summary.FixedPriceBilling {
-					control = nil
-					billingUsage = originalBillingUsage
-					summary = originalSummary
-					summary.FixedPriceBilling = isFixedPriceSettlement(relayInfo, tieredRes)
-				} else {
-					tieredRes.BillingTokens = &tieredTokens
-				}
+			if control != nil && (tieredRes == nil || summary.FixedPriceBilling) {
+				control = nil
+				billingUsage = originalBillingUsage
+				summary = originalSummary
+				summary.FixedPriceBilling = isFixedPriceSettlement(relayInfo, tieredRes)
 			}
 			summary.Quota = composeTieredTextQuota(relayInfo, summary, tieredQuota, tieredRes)
 			if summary.FixedPriceBilling {
