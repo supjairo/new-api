@@ -680,7 +680,7 @@ func TestUpdateUserSettingKeepsWhatTheRequestLeavesOut(t *testing.T) {
 			want: kept(dto.UserSetting{
 				NotifyType: dto.NotifyTypeWebhook, WebhookUrl: "https://example.com/hook", WebhookSecret: "hook-secret",
 				QuotaWarningThreshold: 2000, QuotaWarningEnabled: &off, ChannelNotifyEnabled: &on, UpstreamModelUpdateNotifyEnabled: true,
-				AcceptUnsetRatioModel: true, RecordIpLog: true,
+				AcceptUnsetRatioModel: true,
 			}),
 		},
 		{
