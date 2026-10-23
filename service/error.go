@@ -542,7 +542,7 @@ func wireErrorSnapshot(err *types.NewAPIError) ErrorOverrideSnapshot {
 // evaluateErrorOverride inspects err against rulesStr and returns the audit
 // for the first matching rule without mutating err. It returns nil when no
 // rule matches or the rules are absent or malformed.
-func evaluateErrorOverride(err *types.NewAPIError, rulesStr string) *ErrorOverrideAudit {
+func evaluateErrorOverride(err *types.NewAPIError, rulesStr string, upstreamURLs ...string) *ErrorOverrideAudit {
 	if err == nil || err.GetErrorType() == types.ErrorTypeNewAPIError {
 		return nil
 	}
@@ -556,7 +556,7 @@ func evaluateErrorOverride(err *types.NewAPIError, rulesStr string) *ErrorOverri
 			continue
 		}
 		original := wireErrorSnapshot(err)
-		original.Message = common.MaskSensitiveInfo(original.Message)
+		original.Message = common.MaskSensitiveInfo(original.Message, upstreamURLs...)
 		overridden := original
 		// Replay the rewrite on a copy of the full tree so paths like
 		// "status_code" and "error.message" land exactly as they would for
@@ -594,5 +594,5 @@ func PrepareErrorOverrideAudit(c *gin.Context, err *types.NewAPIError) {
 	if c == nil {
 		return
 	}
-	common.SetContextKey(c, constant.ContextKeyErrorOverrideAudit, evaluateErrorOverride(err, common.GetContextKeyString(c, constant.ContextKeyChannelErrorOverride)))
+	common.SetContextKey(c, constant.ContextKeyErrorOverrideAudit, evaluateErrorOverride(err, common.GetContextKeyString(c, constant.ContextKeyChannelErrorOverride), common.UpstreamAddresses(c)...))
 }

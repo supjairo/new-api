@@ -182,11 +182,14 @@ func TestCacheReadAdjustmentContracts(t *testing.T) {
 	assert.Equal(t, 1000.0, BuildTieredTokenParams(adjusted, false, nil).P)
 	adjusted.UsageSemantic = "anthropic"
 	params := BuildTieredTokenParams(adjusted, true, map[string]bool{"cr": true})
-	assert.Equal(t, 1000.0, params.P)
-	assert.Equal(t, 1040.0, params.Len)
-	assert.Equal(t, 13.0, params.CC)
-	assert.Equal(t, 17.0, params.CC1h)
-	assert.Equal(t, 1010.0, BuildTieredTokenParams(adjusted, true, nil).P)
+	// Only cr carries its own price here, so the unpriced 5m/1h cache writes
+	// fold into the prompt category, with the 1h portion weighted by the
+	// long-TTL multiplier. The adjusted 40 write tokens stay intact.
+	assert.Equal(t, 1050.2, params.P)
+	assert.Equal(t, 1050.0, params.Len)
+	assert.Equal(t, 0.0, params.CC)
+	assert.Equal(t, 0.0, params.CC1h)
+	assert.Equal(t, 1060.2, BuildTieredTokenParams(adjusted, true, nil).P)
 	for _, mode := range []int{relayconstant.RelayModeImagesGenerations, relayconstant.RelayModeAudioSpeech, relayconstant.RelayModeRealtime, relayconstant.RelayModeEmbeddings} {
 		info.RelayMode = mode
 		assert.Nil(t, newUpstreamCacheRateControl(info, usage))

@@ -514,7 +514,7 @@ func TestEvaluateErrorOverride(t *testing.T) {
 		}, http.StatusUnauthorized)
 		rules := `[{"match":{},"override":{"status_code":429,"error.message":"当前分组上游负载已饱和，请稍后再试","error.type":"rate_limit_error","error.code":"rate_limited"}}]`
 
-		audit := evaluateErrorOverride(err, rules)
+		audit := evaluateErrorOverride(err, rules, "https://private.example.com")
 
 		require.NotNil(t, audit)
 		require.Equal(t, http.StatusUnauthorized, audit.Original.Status)
