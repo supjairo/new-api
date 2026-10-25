@@ -81,6 +81,10 @@ export function SidebarModulesSection({
       title: t('Admin area'),
       description: t('Global configuration and administrative tools.'),
     },
+    activity: {
+      title: t('Activity area'),
+      description: t('Activity calendar and event scheduling.'),
+    },
   }
 
   const moduleMeta: Record<
@@ -161,6 +165,12 @@ export function SidebarModulesSection({
       subscription: {
         title: t('Subscription Management'),
         description: t('Manage subscription plans and pricing.'),
+      },
+    },
+    activity: {
+      calendar: {
+        title: t('Activity Calendar'),
+        description: t('Manage scheduled activities and their descriptions.'),
       },
     },
   }

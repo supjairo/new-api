@@ -26,6 +26,7 @@ export type HeaderNavModulesConfig = {
   console: boolean
   pricing: HeaderNavAccessConfig
   rankings: HeaderNavAccessConfig
+  activities: HeaderNavAccessConfig
   docs: boolean
   about: boolean
   [key: string]: boolean | HeaderNavAccessConfig
@@ -46,6 +47,10 @@ export const HEADER_NAV_DEFAULT: HeaderNavModulesConfig = {
     requireAuth: false,
   },
   rankings: {
+    enabled: true,
+    requireAuth: false,
+  },
+  activities: {
     enabled: true,
     requireAuth: false,
   },
@@ -83,6 +88,10 @@ export const SIDEBAR_MODULES_DEFAULT: SidebarModulesAdminConfig = {
     setting: true,
     subscription: true,
   },
+  activity: {
+    enabled: true,
+    calendar: true,
+  },
 }
 
 const toBoolean = (value: unknown, fallback: boolean): boolean => {
@@ -100,6 +109,7 @@ const cloneHeaderNavDefault = (): HeaderNavModulesConfig => ({
   ...HEADER_NAV_DEFAULT,
   pricing: { ...HEADER_NAV_DEFAULT.pricing },
   rankings: { ...HEADER_NAV_DEFAULT.rankings },
+  activities: { ...HEADER_NAV_DEFAULT.activities },
 })
 
 const parseAccessModule = (
@@ -148,6 +158,7 @@ export function parseHeaderNavModules(
       ...base,
       pricing: { ...base.pricing },
       rankings: { ...base.rankings },
+      activities: { ...base.activities },
     }
 
     Object.entries(parsed).forEach(([key, raw]) => {
@@ -157,6 +168,10 @@ export function parseHeaderNavModules(
       }
       if (key === 'rankings') {
         result.rankings = parseAccessModule(raw, base.rankings)
+        return
+      }
+      if (key === 'activities') {
+        result.activities = parseAccessModule(raw, base.activities)
         return
       }
 
