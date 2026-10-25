@@ -66,6 +66,10 @@ const DEFAULT_SIDEBAR_MODULES: SidebarModulesAdminConfig = {
     setting: true,
     subscription: true,
   },
+  activity: {
+    enabled: true,
+    calendar: true,
+  },
 }
 
 const mergeWithDefaultSidebarModules = (
@@ -120,6 +124,7 @@ const URL_TO_CONFIG_MAP: Record<string, { section: string; module: string }> = {
   '/subscriptions': { section: 'admin', module: 'subscription' },
   '/system-settings': { section: 'admin', module: 'setting' },
   '/system-settings/site': { section: 'admin', module: 'setting' },
+  '/activity-management': { section: 'activity', module: 'calendar' },
 }
 
 /**

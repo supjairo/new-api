@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import {
   Activity,
   Box,
+  CalendarDays,
   ClipboardList,
   CreditCard,
   FileText,
@@ -177,6 +178,18 @@ export function useSidebarData(badges: SidebarBadges = {}): SidebarData {
             requiredRole: ROLE.SUPER_ADMIN,
             // Model pricing lives in System Settings.
             badge: badges.modelPricing,
+          },
+        ],
+      },
+      {
+        id: 'activity',
+        title: t('Activity'),
+        items: [
+          {
+            title: t('Activity Calendar'),
+            url: '/activity-management',
+            icon: CalendarDays,
+            requiredRole: ROLE.ADMIN,
           },
         ],
       },
