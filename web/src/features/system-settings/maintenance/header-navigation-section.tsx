@@ -55,6 +55,8 @@ const headerNavSchema = z.object({
   pricingRequireAuth: z.boolean(),
   rankingsEnabled: z.boolean(),
   rankingsRequireAuth: z.boolean(),
+  activitiesEnabled: z.boolean(),
+  activitiesRequireAuth: z.boolean(),
   docs: z.boolean(),
   about: z.boolean(),
 })
@@ -89,6 +91,14 @@ const toFormValues = (config: HeaderNavModulesConfig): HeaderNavFormValues => ({
     config.rankings?.requireAuth === undefined
       ? HEADER_NAV_DEFAULT.rankings.requireAuth
       : Boolean(config.rankings.requireAuth),
+  activitiesEnabled:
+    config.activities?.enabled === undefined
+      ? HEADER_NAV_DEFAULT.activities.enabled
+      : Boolean(config.activities.enabled),
+  activitiesRequireAuth:
+    config.activities?.requireAuth === undefined
+      ? HEADER_NAV_DEFAULT.activities.requireAuth
+      : Boolean(config.activities.requireAuth),
   docs:
     config.docs === undefined ? HEADER_NAV_DEFAULT.docs : Boolean(config.docs),
   about:
@@ -130,6 +140,11 @@ export function HeaderNavigationSection({
         ...(config.rankings ?? HEADER_NAV_DEFAULT.rankings),
         enabled: values.rankingsEnabled,
         requireAuth: values.rankingsRequireAuth,
+      },
+      activities: {
+        ...(config.activities ?? HEADER_NAV_DEFAULT.activities),
+        enabled: values.activitiesEnabled,
+        requireAuth: values.activitiesRequireAuth,
       },
     }
 
@@ -178,7 +193,7 @@ export function HeaderNavigationSection({
   const accessModules: Array<{
     enabledKey: keyof HeaderNavFormValues
     requireAuthKey: keyof HeaderNavFormValues
-    requireAuthDependsOn: 'pricingEnabled' | 'rankingsEnabled'
+    requireAuthDependsOn: 'pricingEnabled' | 'rankingsEnabled' | 'activitiesEnabled'
     title: string
     description: string
     requireAuthTitle: string
@@ -204,6 +219,17 @@ export function HeaderNavigationSection({
       requireAuthTitle: t('Require login to view rankings'),
       requireAuthDescription: t(
         'Visitors must authenticate before accessing the rankings page.'
+      ),
+    },
+    {
+      enabledKey: 'activitiesEnabled',
+      requireAuthKey: 'activitiesRequireAuth',
+      requireAuthDependsOn: 'activitiesEnabled',
+      title: t('Activity Calendar'),
+      description: t('Public calendar of scheduled activities and events.'),
+      requireAuthTitle: t('Require login to view activities'),
+      requireAuthDescription: t(
+        'Visitors must authenticate before accessing the activity calendar.'
       ),
     },
   ]

@@ -43,6 +43,7 @@ func SetApiRouter(router *gin.Engine) {
 			perfMetricsRoute.GET("", controller.GetPerfMetrics)
 		}
 		apiRouter.GET("/rankings", middleware.HeaderNavModuleAuth("rankings"), controller.GetRankings)
+		apiRouter.GET("/activities", middleware.HeaderNavModuleAuth("activities"), controller.GetActivities)
 		apiRouter.GET("/verification", middleware.EmailVerificationRateLimit(), middleware.TurnstileCheck(), controller.SendEmailVerification)
 		apiRouter.GET("/reset_password", middleware.CriticalRateLimit(), middleware.TurnstileCheck(), controller.SendPasswordResetEmail)
 		apiRouter.POST("/user/reset", middleware.CriticalRateLimit(), anonymousRequestBodyLimit, controller.ResetPassword)
@@ -371,6 +372,15 @@ func SetApiRouter(router *gin.Engine) {
 			prefillGroupRoute.POST("/", controller.CreatePrefillGroup)
 			prefillGroupRoute.PUT("/", controller.UpdatePrefillGroup)
 			prefillGroupRoute.DELETE("/:id", controller.DeletePrefillGroup)
+		}
+
+		activityRoute := apiRouter.Group("/activity")
+		activityRoute.Use(middleware.AdminAuth())
+		{
+			activityRoute.GET("/", controller.GetActivities)
+			activityRoute.POST("/", controller.CreateActivity)
+			activityRoute.PUT("/", controller.UpdateActivity)
+			activityRoute.DELETE("/:id", controller.DeleteActivity)
 		}
 
 		mjRoute := apiRouter.Group("/mj")

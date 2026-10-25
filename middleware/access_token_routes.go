@@ -48,6 +48,7 @@ var accessTokenRouteRules = map[string]accessTokenRouteRule{
 	"GET /api/perf-metrics/summary":       accessTokenAnyRule,
 	"GET /api/perf-metrics":               accessTokenAnyRule,
 	"GET /api/rankings":                   accessTokenAnyRule,
+	"GET /api/activities":                 accessTokenAnyRule,
 	"POST /api/oauth/state":               accessTokenSessionRule,
 	"POST /api/oauth/email/bind/start":    accessTokenScopeRule("account_security:write"),
 	"POST /api/oauth/email/bind/resend":   accessTokenScopeRule("account_security:write"),
@@ -255,6 +256,12 @@ var accessTokenRouteRules = map[string]accessTokenRouteRule{
 	"POST /api/prefill_group/":      accessTokenScopeRule("group:write"),
 	"PUT /api/prefill_group/":       accessTokenScopeRule("group:write"),
 	"DELETE /api/prefill_group/:id": accessTokenScopeRule("group:write"),
+
+	// router/api-router.go: /api/activity (admin content management)
+	"GET /api/activity/":       accessTokenSessionRule,
+	"POST /api/activity/":      accessTokenSessionRule,
+	"PUT /api/activity/":       accessTokenSessionRule,
+	"DELETE /api/activity/:id": accessTokenSessionRule,
 
 	// router/api-router.go: /api/mj, /api/task
 	"GET /api/mj/self":                 accessTokenScopeRule("usage:read"),

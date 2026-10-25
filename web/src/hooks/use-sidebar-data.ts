@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import {
   Activity,
   Box,
+  CalendarDays,
   ClipboardList,
   CreditCard,
   FileText,
@@ -175,6 +176,18 @@ export function useSidebarData(): SidebarData {
             activeUrls: ['/system-settings'],
             icon: Settings,
             requiredRole: ROLE.SUPER_ADMIN,
+          },
+        ],
+      },
+      {
+        id: 'activity',
+        title: t('Activity'),
+        items: [
+          {
+            title: t('Activity Calendar'),
+            url: '/activity-management',
+            icon: CalendarDays,
+            requiredRole: ROLE.ADMIN,
           },
         ],
       },

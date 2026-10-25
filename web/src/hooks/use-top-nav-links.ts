@@ -86,6 +86,17 @@ export function useTopNavLinks(): TopNavLink[] {
     links.push({ title: t('Rankings'), href: '/rankings', requiresAuth })
   }
 
+  // Activities
+  const activities = modules?.activities
+  if (activities && typeof activities === 'object' && activities.enabled) {
+    const requiresAuth = activities.requireAuth && !isAuthed
+    links.push({
+      title: t('Activity Calendar'),
+      href: '/activities',
+      requiresAuth,
+    })
+  }
+
   // Docs (supports external links)
   if (modules?.docs !== false) {
     if (docsLink) {

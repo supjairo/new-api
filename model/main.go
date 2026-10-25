@@ -360,6 +360,7 @@ func migrateDB() error {
 		&Model{},
 		&Vendor{},
 		&PrefillGroup{},
+		&Activity{},
 		&Setup{},
 		&TwoFA{},
 		&TwoFABackupCode{},

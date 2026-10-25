@@ -43,12 +43,14 @@ type DatePickerProps = {
   selected: Date | undefined
   onSelect: (date: Date | undefined) => void
   placeholder?: string
+  disableFuture?: boolean
 }
 
 export function DatePicker({
   selected,
   onSelect,
   placeholder,
+  disableFuture = true,
 }: DatePickerProps) {
   const { t, i18n } = useTranslation()
   const placeholderText = placeholder ?? t('Pick a date')
@@ -80,7 +82,7 @@ export function DatePicker({
           onSelect={onSelect}
           locale={calendarLocale}
           disabled={(date: Date) =>
-            date > new Date() || date < new Date('1900-01-01')
+            (disableFuture && date > new Date()) || date < new Date('1900-01-01')
           }
         />
       </PopoverContent>
