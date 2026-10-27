@@ -38,12 +38,16 @@ import { LoadingState } from '@/components/loading-state'
 import { Button } from '@/components/ui/button'
 import { toIntlLocale } from '@/i18n/languages'
 
-import { deleteActivity } from '../api'
-import { useActivities } from '../hooks/use-activities'
-import { formatDate, formatDayLabel, formatMonthLabel } from '../lib/calendar'
-import type { Activity } from '../types'
 import { ActivityFormDialog } from './activity-form-dialog'
 import { MonthCalendar } from './month-calendar'
+import { deleteActivity } from '../api'
+import { useActivities } from '../hooks/use-activities'
+import {
+  formatDate,
+  formatDayLabel,
+  formatMonthLabel,
+} from '../lib/calendar'
+import type { Activity } from '../types'
 
 export function ActivityManagement() {
   const { t, i18n } = useTranslation()
@@ -178,59 +182,57 @@ export function ActivityManagement() {
   return (
     <>
       <SectionPageLayout>
-        <SectionPageLayout.Title>
-          {t('Activity Calendar')}
-        </SectionPageLayout.Title>
-        <SectionPageLayout.Actions>
-          <Button size='sm' onClick={openCreate}>
-            <Plus className='size-4' />
-            {t('Add activity')}
-          </Button>
-        </SectionPageLayout.Actions>
-        <SectionPageLayout.Content>
-          <div className='space-y-4'>
-            <div className='flex flex-wrap items-center justify-between gap-3'>
-              <div className='flex items-center gap-2'>
-                <Button
-                  type='button'
-                  variant='outline'
-                  size='icon'
-                  aria-label={t('Previous month')}
-                  onClick={() => shiftMonth(-1)}
-                >
-                  <ChevronLeft className='size-4' />
-                </Button>
-                <span className='min-w-40 text-center text-lg font-semibold'>
-                  {formatMonthLabel(month, locale)}
-                </span>
-                <Button
-                  type='button'
-                  variant='outline'
-                  size='icon'
-                  aria-label={t('Next month')}
-                  onClick={() => shiftMonth(1)}
-                >
-                  <ChevronRight className='size-4' />
-                </Button>
-              </div>
+      <SectionPageLayout.Title>{t('Activity Calendar')}</SectionPageLayout.Title>
+      <SectionPageLayout.Actions>
+        <Button size='sm' onClick={openCreate}>
+          <Plus className='size-4' />
+          {t('Add activity')}
+        </Button>
+      </SectionPageLayout.Actions>
+      <SectionPageLayout.Content>
+        <div className='space-y-4'>
+          <div className='flex flex-wrap items-center justify-between gap-3'>
+            <div className='flex items-center gap-2'>
               <Button
                 type='button'
                 variant='outline'
-                size='sm'
-                onClick={() => {
-                  const today = new Date()
-                  setMonth(dayjs(today).startOf('month').toDate())
-                  setSelectedDate(formatDate(today))
-                }}
+                size='icon'
+                aria-label={t('Previous month')}
+                onClick={() => shiftMonth(-1)}
               >
-                {t('Today')}
+                <ChevronLeft className='size-4' />
+              </Button>
+              <span className='min-w-40 text-center text-lg font-semibold'>
+                {formatMonthLabel(month, locale)}
+              </span>
+              <Button
+                type='button'
+                variant='outline'
+                size='icon'
+                aria-label={t('Next month')}
+                onClick={() => shiftMonth(1)}
+              >
+                <ChevronRight className='size-4' />
               </Button>
             </div>
-
-            {content}
+            <Button
+              type='button'
+              variant='outline'
+              size='sm'
+              onClick={() => {
+                const today = new Date()
+                setMonth(dayjs(today).startOf('month').toDate())
+                setSelectedDate(formatDate(today))
+              }}
+            >
+              {t('Today')}
+            </Button>
           </div>
-        </SectionPageLayout.Content>
-      </SectionPageLayout>
+
+          {content}
+        </div>
+      </SectionPageLayout.Content>
+    </SectionPageLayout>
 
       <ActivityFormDialog
         open={formOpen}
