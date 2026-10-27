@@ -165,6 +165,13 @@ function parseDiscountMap(data: unknown): Record<number, number> {
   )
 }
 
+function parseBonusMap(data: unknown): Record<number, number> {
+  const parsed = parseDiscountMap(data)
+  return Object.fromEntries(
+    Object.entries(parsed).filter(([, percent]) => percent > 0)
+  )
+}
+
 export function useTopupInfo() {
   const [topupInfo, setTopupInfo] = useState<TopupInfo | null>(null)
   const [presetAmounts, setPresetAmounts] = useState<PresetAmount[]>([])
@@ -189,6 +196,7 @@ export function useTopupInfo() {
         ),
         amount_options: parseAmountOptions(response.data.amount_options),
         discount: parseDiscountMap(response.data.discount),
+        bonus: parseBonusMap(response.data.bonus),
         creem_products: parseCreemProducts(response.data.creem_products),
         waffo_pay_methods: parseWaffoPayMethods(
           response.data.waffo_pay_methods
@@ -200,7 +208,8 @@ export function useTopupInfo() {
       if (processedData.amount_options.length > 0) {
         const customPresets = mergePresetAmounts(
           processedData.amount_options,
-          processedData.discount || {}
+          processedData.discount || {},
+          processedData.bonus || {}
         )
         setPresetAmounts(customPresets)
       } else {

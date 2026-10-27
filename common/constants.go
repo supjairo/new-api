@@ -129,6 +129,9 @@ var TelegramBotName = ""
 
 var QuotaForNewUser = 0
 var QuotaForInviter = 0
+
+// TopupRebatePercentage 邀请的用户充值时，邀请人按充值额度获得的返利百分比（0 = 关闭）。
+var TopupRebatePercentage = 0
 var QuotaForInvitee = 0
 var ChannelDisableThreshold = 5.0
 var AutomaticDisableChannelEnabled = false

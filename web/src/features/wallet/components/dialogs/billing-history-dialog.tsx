@@ -47,6 +47,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 import { formatCurrencyFromUSD } from '@/lib/currency'
 import { formatNumber } from '@/lib/format'
+import { cn } from '@/lib/utils'
 
 import { useBillingHistory } from '../../hooks/use-billing-history'
 import {
@@ -188,6 +189,7 @@ export function BillingHistoryDialog({
               <div className='space-y-3'>
                 {records.map((record) => {
                   const statusConfig = getStatusConfig(record.status)
+                  const hasBonus = (record.bonus_quota ?? 0) > 0
                   return (
                     <div
                       key={record.id}
@@ -234,7 +236,12 @@ export function BillingHistoryDialog({
                       </div>
 
                       {/* Details Grid */}
-                      <div className='mt-3 grid grid-cols-2 gap-3 sm:mt-4 sm:grid-cols-3 sm:gap-4'>
+                      <div
+                        className={cn(
+                          'mt-3 grid grid-cols-2 gap-3 sm:mt-4 sm:gap-4',
+                          hasBonus ? 'sm:grid-cols-4' : 'sm:grid-cols-3'
+                        )}
+                      >
                         <div className='space-y-1'>
                           <Label className='text-muted-foreground text-xs'>
                             {t('Payment Method')}
@@ -255,6 +262,21 @@ export function BillingHistoryDialog({
                             })}
                           </div>
                         </div>
+                        {hasBonus && (
+                          <div className='space-y-1'>
+                            <Label className='text-muted-foreground text-xs'>
+                              {t('Bonus')}
+                            </Label>
+                            <div className='text-sm font-semibold text-green-600'>
+                              +
+                              {formatCurrencyFromUSD(record.bonus_quota ?? 0, {
+                                digitsLarge: 2,
+                                digitsSmall: 2,
+                                abbreviate: false,
+                              })}
+                            </div>
+                          </div>
+                        )}
                         <div className='space-y-1'>
                           <Label className='text-muted-foreground text-xs'>
                             {t('Payment')}

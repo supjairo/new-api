@@ -274,6 +274,7 @@ export type BillingSettings = {
   QuotaForNewUser: number
   QuotaForInviter: number
   QuotaForInvitee: number
+  TopupRebatePercentage: number
   TopUpLink: string
   'quota_setting.enable_free_model_pre_consume': boolean
   'quota_setting.trust_quota_usd': number
@@ -315,6 +316,7 @@ export type BillingSettings = {
   PayMethods: string
   'payment_setting.amount_options': string
   'payment_setting.amount_discount': string
+  'payment_setting.amount_bonus': string
   'payment_setting.compliance_confirmed': boolean
   'payment_setting.compliance_terms_version': string
   'payment_setting.compliance_confirmed_at': number

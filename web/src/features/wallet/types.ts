@@ -39,7 +39,19 @@ export type PaymentResponse = ApiResponse<Record<string, unknown>> & {
   url?: string
 }
 export type StripePaymentResponse = ApiResponse<{ pay_link: string }>
-export type AffiliateCodeResponse = ApiResponse<string>
+export type AffiliateCodeResponse = ApiResponse<string> & {
+  /** Reward rules of the referral program (zeroed when compliance is unconfirmed) */
+  rewards?: AffiliateRewards
+}
+
+export type AffiliateRewards = {
+  /** Fixed quota credited to the inviter when an invited user signs up */
+  quota_for_inviter: number
+  /** Fixed quota credited to the invited user on sign-up */
+  quota_for_invitee: number
+  /** Percentage of each invited user top-up credited to the inviter */
+  topup_rebate_percentage: number
+}
 export type AffiliateTransferResponse = ApiResponse
 export type CreemPaymentResponse = ApiResponse<{ checkout_url: string }>
 export type WaffoPaymentResponse = ApiResponse<
@@ -134,6 +146,8 @@ export interface TopupInfo {
   amount_options: number[]
   /** Discount rates by amount */
   discount: Record<number, number>
+  /** Bonus percentages by amount (e.g. 10 means +10% quota) */
+  bonus?: Record<number, number>
   /** Optional topup link for purchasing codes */
   topup_link?: string
   /** Whether Creem topup is enabled */
@@ -166,6 +180,8 @@ export interface PresetAmount {
   value: number
   /** Optional discount rate (0-1) */
   discount?: number
+  /** Optional bonus percentage (e.g. 10 means +10% quota) */
+  bonus?: number
 }
 
 /**
@@ -261,6 +277,8 @@ export interface TopupRecord {
   amount: number
   /** Payment amount (actual money paid) */
   money: number
+  /** Bonus quota credited on top of the base amount */
+  bonus_quota?: number
   /** Trade/order number */
   trade_no: string
   /** Payment method type */

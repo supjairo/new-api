@@ -75,6 +75,16 @@ export function getDiscountLabel(discount: number, t: TFunction): string {
 }
 
 /**
+ * Get bonus label for display (e.g., "Bonus 10%")
+ */
+export function getBonusLabel(bonus: number | undefined, t: TFunction): string {
+  if (!bonus || bonus <= 0) {
+    return ''
+  }
+  return t('Bonus {{percent}}%', { percent: Math.round(bonus) })
+}
+
+/**
  * Calculate pricing details for a preset amount
  */
 export function calculatePresetPricing(
