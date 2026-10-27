@@ -82,6 +82,40 @@ export function buildMonthGrid(
   })
 }
 
+export type ActivityColor = {
+  chip: string
+  dot: string
+}
+
+const ACTIVITY_COLORS: ActivityColor[] = [
+  {
+    chip: 'bg-sky-500/15 text-sky-700 dark:text-sky-300',
+    dot: 'bg-sky-500',
+  },
+  {
+    chip: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+    dot: 'bg-emerald-500',
+  },
+  {
+    chip: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
+    dot: 'bg-amber-500',
+  },
+  {
+    chip: 'bg-violet-500/15 text-violet-700 dark:text-violet-300',
+    dot: 'bg-violet-500',
+  },
+  {
+    chip: 'bg-rose-500/15 text-rose-700 dark:text-rose-300',
+    dot: 'bg-rose-500',
+  },
+]
+
+export const ACTIVITY_COLOR_COUNT = ACTIVITY_COLORS.length
+
+export function getActivityColor(activity: Activity): ActivityColor {
+  return ACTIVITY_COLORS[Math.abs(activity.id) % ACTIVITY_COLORS.length]
+}
+
 export function formatMonthLabel(month: Date, locale?: string): string {
   return new Intl.DateTimeFormat(locale, {
     year: 'numeric',

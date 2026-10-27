@@ -16,8 +16,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
@@ -25,8 +25,8 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import * as z from 'zod'
 
-import { Dialog } from '@/components/dialog'
 import { DatePicker } from '@/components/date-picker'
+import { Dialog } from '@/components/dialog'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -136,7 +136,9 @@ export function ActivityFormDialog(props: ActivityFormDialogProps) {
       open={props.open}
       onOpenChange={props.onOpenChange}
       title={props.activity ? t('Edit activity') : t('Add activity')}
-      description={t('Scheduled activities are visible on the activity calendar.')}
+      description={t(
+        'Scheduled activities are visible on the activity calendar.'
+      )}
       footer={
         <>
           <Button
@@ -170,7 +172,9 @@ export function ActivityFormDialog(props: ActivityFormDialogProps) {
               <FormItem>
                 <FormLabel>{t('Activity date')}</FormLabel>
                 <DatePicker
-                  selected={field.value ? dayjs(field.value).toDate() : undefined}
+                  selected={
+                    field.value ? dayjs(field.value).toDate() : undefined
+                  }
                   onSelect={(date) =>
                     field.onChange(date ? dayjs(date).format(DATE_FORMAT) : '')
                   }
@@ -208,7 +212,9 @@ export function ActivityFormDialog(props: ActivityFormDialogProps) {
                     {...field}
                     rows={5}
                     maxLength={2000}
-                    placeholder={t('Describe the activity and how users can join')}
+                    placeholder={t(
+                      'Describe the activity and how users can join'
+                    )}
                   />
                 </FormControl>
                 <FormMessage />

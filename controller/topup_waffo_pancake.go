@@ -378,10 +378,16 @@ func RequestWaffoPancakePay(c *gin.Context) {
 	}
 
 	tradeNo := fmt.Sprintf("WAFFO_PANCAKE-%d-%d-%s", id, time.Now().UnixMilli(), randstr.String(6))
+	bonusQuota, bonusErr := getTopUpBonusQuota(req.Amount)
+	if bonusErr != nil {
+		paymentError(c, bonusErr)
+		return
+	}
 	topUp := &model.TopUp{
 		UserId:          id,
 		Amount:          normalizeWaffoPancakeTopUpAmount(req.Amount),
 		Money:           payMoney,
+		BonusQuota:      int64(bonusQuota),
 		TradeNo:         tradeNo,
 		PaymentMethod:   model.PaymentMethodWaffoPancake,
 		PaymentProvider: model.PaymentProviderWaffoPancake,

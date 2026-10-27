@@ -18,8 +18,13 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { describe, expect, it } from 'vitest'
 
-import { buildMonthGrid, groupActivitiesByDate } from '../calendar'
 import type { Activity } from '../../types'
+import {
+  ACTIVITY_COLOR_COUNT,
+  buildMonthGrid,
+  getActivityColor,
+  groupActivitiesByDate,
+} from '../calendar'
 
 const createActivity = (id: number, date: string): Activity => ({
   id,
@@ -64,5 +69,24 @@ describe('groupActivitiesByDate', () => {
 
     expect(grouped.get('2026-10-05')?.map((item) => item.id)).toEqual([1, 2])
     expect(grouped.get('2026-10-08')?.map((item) => item.id)).toEqual([3])
+  })
+})
+
+describe('getActivityColor', () => {
+  it('returns a stable color for the same activity id', () => {
+    const activity = createActivity(7, '2026-10-05')
+
+    expect(getActivityColor(activity)).toBe(getActivityColor(activity))
+  })
+
+  it('cycles through every color class by id', () => {
+    const colors = new Set(
+      Array.from(
+        { length: ACTIVITY_COLOR_COUNT * 2 },
+        (_, index) => getActivityColor(createActivity(index, '2026-10-05')).dot
+      )
+    )
+
+    expect(colors.size).toBe(ACTIVITY_COLOR_COUNT)
   })
 })

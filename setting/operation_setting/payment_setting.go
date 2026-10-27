@@ -11,6 +11,7 @@ import (
 type PaymentSetting struct {
 	AmountOptions  []int           `json:"amount_options"`
 	AmountDiscount map[int]float64 `json:"amount_discount"` // 充值金额对应的折扣，例如 100 元 0.9 表示 100 元充值享受 9 折优惠
+	AmountBonus    map[int]float64 `json:"amount_bonus"`    // 充值金额对应的赠送百分比，例如 100 元 10 表示充 100 元额外赠送 10% 额度
 
 	ComplianceConfirmed    bool   `json:"compliance_confirmed"`
 	ComplianceTermsVersion string `json:"compliance_terms_version"`
@@ -39,6 +40,7 @@ const (
 var paymentSetting = PaymentSetting{
 	AmountOptions:  []int{10, 20, 50, 100, 200, 500},
 	AmountDiscount: map[int]float64{},
+	AmountBonus:    map[int]float64{},
 	// 没有保存过签名方式的站点按 MD5 运行，升级后行为不变。
 	EpaySignType: EpaySignTypeMD5,
 }
