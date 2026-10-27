@@ -120,6 +120,7 @@ func GetTopUpInfo(c *gin.Context) {
 		"waffo_pancake_min_topup": setting.WaffoPancakeMinTopUp,
 		"amount_options":          operation_setting.GetPaymentSetting().AmountOptions,
 		"discount":                operation_setting.GetPaymentSetting().AmountDiscount,
+		"bonus":                   operation_setting.GetPaymentSetting().AmountBonus,
 		"topup_link":              common.TopUpLink,
 	}
 	common.ApiSuccess(c, data)
@@ -203,6 +204,28 @@ func getTopUpQuota(amount int64) (int, error) {
 	return common.WalletQuotaFromDecimalStrict(quota)
 }
 
+// getTopUpBonusQuota 按充值金额匹配赠送百分比配置，返回快照到订单的赠送额度。
+// 未命中配置返回 0；tokens 展示模式下金额先归一化为美元单位，与入账基数语义一致。
+func getTopUpBonusQuota(amount int64) (int, error) {
+	if amount <= 0 {
+		return 0, nil
+	}
+	if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeTokens {
+		amount = max(int64(float64(amount)/common.QuotaPerUnit), 1)
+	}
+	percent, ok := operation_setting.GetPaymentSetting().AmountBonus[int(amount)]
+	if !ok || percent <= 0 {
+		return 0, nil
+	}
+	if percent > 100 {
+		return 0, common.NewMessage("Top-up bonus percentage cannot exceed 100")
+	}
+	bonus := decimal.NewFromInt(amount).
+		Mul(decimal.NewFromFloat(percent / 100)).
+		Mul(decimal.NewFromFloat(common.QuotaPerUnit))
+	return common.WalletQuotaFromDecimalStrict(bonus)
+}
+
 func getMaxTopUpAmount() int64 {
 	if common.QuotaPerUnit <= 0 {
 		return 0
@@ -271,7 +294,12 @@ func rejectInvalidCreditedQuota(c *gin.Context, userId int, quota decimal.Decima
 func rejectInvalidTopUpQuota(c *gin.Context, userId int, amount int64) bool {
 	creditedQuota, err := validateTopUpQuota(amount)
 	if err == nil {
-		err = model.ValidateTopUpQuotaCapacity(userId, creditedQuota)
+		bonusQuota, bonusErr := getTopUpBonusQuota(amount)
+		if bonusErr != nil {
+			err = bonusErr
+		} else {
+			err = model.ValidateTopUpQuotaCapacity(userId, creditedQuota+bonusQuota)
+		}
 	}
 	if err != nil {
 		paymentError(c, err)
@@ -342,10 +370,16 @@ func RequestEpay(c *gin.Context) {
 		dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
 		amount = dAmount.Div(dQuotaPerUnit).IntPart()
 	}
+	bonusQuota, bonusErr := getTopUpBonusQuota(req.Amount)
+	if bonusErr != nil {
+		paymentError(c, bonusErr)
+		return
+	}
 	topUp := &model.TopUp{
 		UserId:          id,
 		Amount:          amount,
 		Money:           payMoney,
+		BonusQuota:      int64(bonusQuota),
 		TradeNo:         tradeNo,
 		PaymentMethod:   req.PaymentMethod,
 		PaymentProvider: model.PaymentProviderEpay,

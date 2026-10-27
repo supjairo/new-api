@@ -58,7 +58,14 @@ func (*StripeAdaptor) RequestAmount(c *gin.Context, req *StripePayRequest) {
 		paymentError(c, common.NewMessage("Failed to get the user group"))
 		return
 	}
-	if rejectInvalidCreditedQuota(c, id, getStripeCreditedQuota(req.Amount, group)) {
+	bonusQuota, bonusErr := getTopUpBonusQuota(req.Amount)
+	if bonusErr != nil {
+		paymentError(c, bonusErr)
+		return
+	}
+	if rejectInvalidCreditedQuota(c, id,
+		getStripeCreditedQuota(req.Amount, group).Add(decimal.NewFromInt(int64(bonusQuota))),
+	) {
 		return
 	}
 	payMoney := getStripePayMoney(float64(req.Amount), group)
@@ -100,8 +107,13 @@ func (*StripeAdaptor) RequestPay(c *gin.Context, req *StripePayRequest) {
 		return
 	}
 	chargedMoney := GetChargedAmount(float64(req.Amount), *user)
+	bonusQuota, bonusErr := getTopUpBonusQuota(req.Amount)
+	if bonusErr != nil {
+		paymentError(c, bonusErr)
+		return
+	}
 	if rejectInvalidCreditedQuota(c, id,
-		decimal.NewFromFloat(chargedMoney).Mul(decimal.NewFromFloat(common.QuotaPerUnit)),
+		getStripeCreditedQuota(req.Amount, user.Group).Add(decimal.NewFromInt(int64(bonusQuota))),
 	) {
 		return
 	}
@@ -120,6 +132,7 @@ func (*StripeAdaptor) RequestPay(c *gin.Context, req *StripePayRequest) {
 		UserId:          id,
 		Amount:          req.Amount,
 		Money:           chargedMoney,
+		BonusQuota:      int64(bonusQuota),
 		TradeNo:         referenceId,
 		PaymentMethod:   model.PaymentMethodStripe,
 		PaymentProvider: model.PaymentProviderStripe,

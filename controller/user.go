@@ -456,10 +456,25 @@ func GetAffCode(c *gin.Context) {
 			return
 		}
 	}
+	// Reward rules for the referral program. Zeroed out while payment
+	// compliance is unconfirmed, because the rewards do not take effect then.
+	rewards := gin.H{
+		"quota_for_inviter":       common.QuotaForInviter,
+		"quota_for_invitee":       common.QuotaForInvitee,
+		"topup_rebate_percentage": common.TopupRebatePercentage,
+	}
+	if !operation_setting.IsPaymentComplianceConfirmed() {
+		rewards = gin.H{
+			"quota_for_inviter":       0,
+			"quota_for_invitee":       0,
+			"topup_rebate_percentage": 0,
+		}
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
 		"data":    user.AffCode,
+		"rewards": rewards,
 	})
 	return
 }

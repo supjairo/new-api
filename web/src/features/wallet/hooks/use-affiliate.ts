@@ -30,6 +30,7 @@ import {
 
 import { getAffiliateCode, transferAffiliateQuota } from '../api'
 import { generateAffiliateLink } from '../lib'
+import type { AffiliateRewards } from '../types'
 
 // ============================================================================
 // Affiliate Hook
@@ -38,6 +39,11 @@ import { generateAffiliateLink } from '../lib'
 export function useAffiliate() {
   const [affiliateCode, setAffiliateCode] = useState<string>('')
   const [affiliateLink, setAffiliateLink] = useState<string>('')
+  const [rewards, setRewards] = useState<AffiliateRewards>({
+    quota_for_inviter: 0,
+    quota_for_invitee: 0,
+    topup_rebate_percentage: 0,
+  })
   const [loading, setLoading] = useState(true)
   const [transferring, setTransferring] = useState(false)
   const { copyToClipboard } = useCopyToClipboard()
@@ -52,6 +58,9 @@ export function useAffiliate() {
         setAffiliateCode(response.data)
         const link = generateAffiliateLink(response.data)
         setAffiliateLink(link)
+      }
+      if (response.rewards) {
+        setRewards(response.rewards)
       }
     } catch (error) {
       handleServerError(error)
@@ -96,6 +105,7 @@ export function useAffiliate() {
   return {
     affiliateCode,
     affiliateLink,
+    rewards,
     loading,
     transferring,
     copyAffiliateLink,

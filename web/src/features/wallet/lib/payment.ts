@@ -202,11 +202,12 @@ export function generatePresetAmounts(minAmount: number): PresetAmount[] {
 }
 
 /**
- * Merge custom preset amounts with discounts
+ * Merge custom preset amounts with discounts and bonuses
  */
 export function mergePresetAmounts(
   amountOptions: number[],
-  discounts: Record<number, number>
+  discounts: Record<number, number>,
+  bonuses: Record<number, number> = {}
 ): PresetAmount[] {
   if (!amountOptions || amountOptions.length === 0) {
     return []
@@ -215,5 +216,6 @@ export function mergePresetAmounts(
   return amountOptions.map((amount) => ({
     value: amount,
     discount: discounts[amount] || 1.0,
+    bonus: (bonuses[amount] ?? 0) > 0 ? bonuses[amount] : 0,
   }))
 }

@@ -193,7 +193,10 @@ export function HeaderNavigationSection({
   const accessModules: Array<{
     enabledKey: keyof HeaderNavFormValues
     requireAuthKey: keyof HeaderNavFormValues
-    requireAuthDependsOn: 'pricingEnabled' | 'rankingsEnabled' | 'activitiesEnabled'
+    requireAuthDependsOn:
+      | 'pricingEnabled'
+      | 'rankingsEnabled'
+      | 'activitiesEnabled'
     title: string
     description: string
     requireAuthTitle: string

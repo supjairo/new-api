@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils'
 import {
   buildMonthGrid,
   formatDayLabel,
+  getActivityColor,
   getWeekdayLabels,
 } from '../lib/calendar'
 import type { Activity } from '../types'
@@ -67,8 +68,8 @@ export function MonthCalendar(props: MonthCalendarProps) {
                 day.inMonth
                   ? 'bg-background'
                   : 'bg-muted/30 text-muted-foreground',
-                day.isToday && 'border-primary/60',
-                selected && 'ring-primary ring-2'
+                day.isToday && 'border-primary/60 bg-primary/5',
+                selected && 'border-primary bg-primary/5 ring-primary ring-2'
               )}
             >
               <span
@@ -84,7 +85,10 @@ export function MonthCalendar(props: MonthCalendarProps) {
                 {day.activities.slice(0, 2).map((activity) => (
                   <span
                     key={activity.id}
-                    className='bg-muted text-foreground truncate rounded px-1 py-0.5 text-[11px]'
+                    className={cn(
+                      'truncate rounded px-1 py-0.5 text-[11px] font-medium',
+                      getActivityColor(activity).chip
+                    )}
                   >
                     {activity.title}
                   </span>

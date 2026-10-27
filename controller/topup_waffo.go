@@ -219,12 +219,18 @@ func RequestWaffoPay(c *gin.Context) {
 	if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeTokens {
 		amount = max(int64(float64(req.Amount)/common.QuotaPerUnit), 1)
 	}
+	bonusQuota, bonusErr := getTopUpBonusQuota(req.Amount)
+	if bonusErr != nil {
+		paymentError(c, bonusErr)
+		return
+	}
 
 	// 创建本地订单
 	topUp := &model.TopUp{
 		UserId:          id,
 		Amount:          amount,
 		Money:           payMoney,
+		BonusQuota:      int64(bonusQuota),
 		TradeNo:         merchantOrderId,
 		PaymentMethod:   model.PaymentMethodWaffo,
 		PaymentProvider: model.PaymentProviderWaffo,

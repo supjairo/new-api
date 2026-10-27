@@ -28,22 +28,22 @@ import { LoadingState } from '@/components/loading-state'
 import { PageTransition } from '@/components/page-transition'
 import { Button } from '@/components/ui/button'
 import { toIntlLocale } from '@/i18n/languages'
+import { cn } from '@/lib/utils'
 
-import { MonthCalendar } from './month-calendar'
 import { useActivities } from '../hooks/use-activities'
 import {
   formatDate,
   formatDayLabel,
   formatMonth,
   formatMonthLabel,
+  getActivityColor,
 } from '../lib/calendar'
+import { MonthCalendar } from './month-calendar'
 
 export function ActivityCalendarPage() {
   const { t, i18n } = useTranslation()
   const locale = toIntlLocale(i18n.resolvedLanguage || i18n.language)
-  const [month, setMonth] = useState(() =>
-    dayjs().startOf('month').toDate()
-  )
+  const [month, setMonth] = useState(() => dayjs().startOf('month').toDate())
   const [selectedDate, setSelectedDate] = useState(() => formatDate(new Date()))
   const activitiesQuery = useActivities()
 
@@ -95,9 +95,14 @@ export function ActivityCalendarPage() {
           onSelectDate={selectDate}
         />
         <aside className='bg-card flex flex-col rounded-xl border p-4'>
-          <h2 className='font-semibold'>
-            {formatDayLabel(selectedDate, locale)}
-          </h2>
+          <div className='flex items-center gap-2'>
+            <span className='bg-primary/10 text-primary flex size-7 shrink-0 items-center justify-center rounded-lg'>
+              <CalendarDays className='size-4' aria-hidden='true' />
+            </span>
+            <h2 className='font-semibold'>
+              {formatDayLabel(selectedDate, locale)}
+            </h2>
+          </div>
           {selectedActivities.length === 0 ? (
             <EmptyState
               icon={CalendarDays}
@@ -107,7 +112,17 @@ export function ActivityCalendarPage() {
           ) : (
             <ul className='mt-3 space-y-3'>
               {selectedActivities.map((activity) => (
-                <li key={activity.id} className='bg-muted/40 rounded-lg p-3'>
+                <li
+                  key={activity.id}
+                  className='bg-muted/40 relative overflow-hidden rounded-lg py-3 ps-5 pe-3'
+                >
+                  <span
+                    aria-hidden='true'
+                    className={cn(
+                      'absolute inset-y-2 start-0 w-1 rounded-full',
+                      getActivityColor(activity).dot
+                    )}
+                  />
                   <h3 className='font-medium'>{activity.title}</h3>
                   {activity.description && (
                     <p className='text-muted-foreground mt-1 text-sm whitespace-pre-wrap'>
@@ -126,15 +141,20 @@ export function ActivityCalendarPage() {
   return (
     <PublicLayout showMainContainer={false}>
       <PageTransition className='mx-auto w-full max-w-[1100px] space-y-6 px-3 pt-20 pb-12 sm:px-6 sm:pt-24'>
-        <header className='space-y-2'>
-          <h1 className='text-3xl font-bold tracking-tight'>
-            {t('Activity Calendar')}
-          </h1>
-          <p className='text-muted-foreground'>
-            {t(
-              'Browse scheduled activities and read what is happening on each day.'
-            )}
-          </p>
+        <header className='flex items-center gap-3'>
+          <span className='bg-primary/10 text-primary flex size-12 shrink-0 items-center justify-center rounded-2xl'>
+            <CalendarDays className='size-6' aria-hidden='true' />
+          </span>
+          <div className='space-y-1'>
+            <h1 className='text-3xl font-bold tracking-tight'>
+              {t('Activity Calendar')}
+            </h1>
+            <p className='text-muted-foreground'>
+              {t(
+                'Browse activities by month and pick a day to see its details.'
+              )}
+            </p>
+          </div>
         </header>
 
         <div className='flex flex-wrap items-center justify-between gap-3'>
@@ -162,10 +182,15 @@ export function ActivityCalendarPage() {
             </Button>
           </div>
           <div className='flex items-center gap-2'>
-            <span className='text-muted-foreground text-sm'>
+            <span className='bg-primary/10 text-primary inline-flex items-center rounded-full px-3 py-1 text-sm font-medium'>
               {t('{{count}} activities this month', { count: monthCount })}
             </span>
-            <Button type='button' variant='outline' size='sm' onClick={goToToday}>
+            <Button
+              type='button'
+              variant='outline'
+              size='sm'
+              onClick={goToToday}
+            >
               {t('Today')}
             </Button>
           </div>

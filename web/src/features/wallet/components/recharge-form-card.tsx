@@ -39,6 +39,7 @@ import { cn } from '@/lib/utils'
 
 import {
   formatCurrency,
+  getBonusLabel,
   getDiscountLabel,
   getPaymentIcon,
   getMinTopupAmount,
@@ -232,6 +233,9 @@ export function RechargeFormCard({
                         preset.discount ||
                         topupInfo?.discount?.[preset.value] ||
                         1.0
+                      const bonus =
+                        preset.bonus ?? topupInfo?.bonus?.[preset.value] ?? 0
+                      const bonusLabel = getBonusLabel(bonus, t)
                       const {
                         displayValue,
                         actualPrice,
@@ -243,6 +247,51 @@ export function RechargeFormCard({
                         discount,
                         usdExchangeRate
                       )
+                      const bonusAmount = formatCurrency(
+                        displayValue * (bonus / 100)
+                      )
+                      const presetDescription = (() => {
+                        if (bonus > 0 && hasDiscount && savedAmount > 0) {
+                          return (
+                            <Trans
+                              t={t}
+                              i18nKey='Pay {{amount}} <savings>• Save {{saved}} • Bonus {{bonusAmount}}</savings>'
+                              values={{
+                                amount: formatCurrency(actualPrice),
+                                saved: formatCurrency(savedAmount),
+                                bonusAmount,
+                              }}
+                              components={{
+                                savings: <span className='text-green-600' />,
+                              }}
+                            />
+                          )
+                        }
+                        if (bonus > 0) {
+                          return t('Pay {{amount}} • Bonus {{bonusAmount}}', {
+                            amount: formatCurrency(actualPrice),
+                            bonusAmount,
+                          })
+                        }
+                        if (hasDiscount && savedAmount > 0) {
+                          return (
+                            <Trans
+                              t={t}
+                              i18nKey='Pay {{amount}} <savings>• Save {{saved}}</savings>'
+                              values={{
+                                amount: formatCurrency(actualPrice),
+                                saved: formatCurrency(savedAmount),
+                              }}
+                              components={{
+                                savings: <span className='text-green-600' />,
+                              }}
+                            />
+                          )
+                        }
+                        return t('Pay {{amount}}', {
+                          amount: formatCurrency(actualPrice),
+                        })
+                      })()
                       return (
                         <Button
                           key={preset.value}
@@ -255,34 +304,25 @@ export function RechargeFormCard({
                           )}
                           onClick={() => onSelectPreset(preset)}
                         >
-                          <div className='flex w-full items-center justify-between'>
+                          <div className='flex w-full items-center justify-between gap-1'>
                             <div className='text-base font-semibold sm:text-lg'>
                               {formatNumber(displayValue)}
                             </div>
-                            {hasDiscount && (
-                              <div className='text-xs font-medium text-green-600'>
-                                {getDiscountLabel(discount, t)}
-                              </div>
-                            )}
+                            <div className='flex shrink-0 items-center gap-1'>
+                              {bonusLabel && (
+                                <div className='text-xs font-medium text-green-600'>
+                                  {bonusLabel}
+                                </div>
+                              )}
+                              {hasDiscount && (
+                                <div className='text-xs font-medium text-green-600'>
+                                  {getDiscountLabel(discount, t)}
+                                </div>
+                              )}
+                            </div>
                           </div>
                           <div className='text-muted-foreground mt-1.5 w-full text-xs sm:mt-2'>
-                            {hasDiscount && savedAmount > 0 ? (
-                              <Trans
-                                t={t}
-                                i18nKey='Pay {{amount}} <savings>• Save {{saved}}</savings>'
-                                values={{
-                                  amount: formatCurrency(actualPrice),
-                                  saved: formatCurrency(savedAmount),
-                                }}
-                                components={{
-                                  savings: <span className='text-green-600' />,
-                                }}
-                              />
-                            ) : (
-                              t('Pay {{amount}}', {
-                                amount: formatCurrency(actualPrice),
-                              })
-                            )}
+                            {presetDescription}
                           </div>
                         </Button>
                       )

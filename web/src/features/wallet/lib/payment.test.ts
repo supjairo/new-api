@@ -24,6 +24,7 @@ import {
   isStripePayment,
   isWaffoPayment,
   isWaffoPancakePayment,
+  mergePresetAmounts,
 } from './payment'
 
 describe('payment type classification', () => {
@@ -81,5 +82,30 @@ describe('payment dispatch', () => {
 
     expect(success).toBe(false)
     expect(called).toBe(false)
+  })
+})
+
+describe('mergePresetAmounts', () => {
+  test('attaches discounts and bonuses from the same amount tier', () => {
+    const presets = mergePresetAmounts(
+      [100, 200],
+      { 100: 0.9 },
+      { 100: 10, 200: 0 }
+    )
+
+    expect(presets).toEqual([
+      { value: 100, discount: 0.9, bonus: 10 },
+      { value: 200, discount: 1.0, bonus: 0 },
+    ])
+  })
+
+  test('drops non-positive bonus percentages and defaults missing bonuses', () => {
+    const presets = mergePresetAmounts([50], {}, { 50: -5 })
+
+    expect(presets).toEqual([{ value: 50, discount: 1.0, bonus: 0 }])
+  })
+
+  test('keeps empty amount options empty', () => {
+    expect(mergePresetAmounts([], {}, {})).toEqual([])
   })
 })
