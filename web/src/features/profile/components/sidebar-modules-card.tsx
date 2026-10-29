@@ -133,6 +133,43 @@ export function SidebarModulesCard() {
         },
       ],
     },
+    {
+      key: 'support',
+      title: t('Support area'),
+      description: t('External help, community and partnership resources.'),
+      modules: [
+        {
+          key: 'telegram',
+          title: t('Telegram Channel'),
+          description: t('Join our Telegram channel for announcements.'),
+        },
+        {
+          key: 'community',
+          title: t('Community'),
+          description: t('Discuss and share with other users.'),
+        },
+        {
+          key: 'channel',
+          title: t('Channel Onboarding'),
+          description: t('Apply to onboard your upstream channel.'),
+        },
+        {
+          key: 'reseller',
+          title: t('Become a Reseller'),
+          description: t('Partner with us as a reseller.'),
+        },
+        {
+          key: 'tickets',
+          title: t('Support Tickets'),
+          description: t('Submit and track service requests.'),
+        },
+        {
+          key: 'guides',
+          title: t('Usage Guides'),
+          description: t('Read setup and usage documentation.'),
+        },
+      ],
+    },
   ]
 
   const loadConfig = useCallback(async () => {

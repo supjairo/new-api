@@ -70,6 +70,15 @@ const DEFAULT_SIDEBAR_MODULES: SidebarModulesAdminConfig = {
     enabled: true,
     calendar: true,
   },
+  support: {
+    enabled: true,
+    telegram: true,
+    community: true,
+    channel: true,
+    reseller: true,
+    tickets: true,
+    guides: true,
+  },
 }
 
 const mergeWithDefaultSidebarModules = (
@@ -126,6 +135,12 @@ const URL_TO_CONFIG_MAP: Record<string, { section: string; module: string }> = {
   '/system-settings': { section: 'admin', module: 'setting' },
   '/system-settings/site': { section: 'admin', module: 'setting' },
   '/activity-management': { section: 'activity', module: 'calendar' },
+  'https://t.me/i2pp_studio_channel': { section: 'support', module: 'telegram' },
+  'https://i2pp.com/circle/lucas_api': { section: 'support', module: 'community' },
+  'https://i2pp.com/archives/1375.html': { section: 'support', module: 'channel' },
+  'https://i2pp.com/archives/1373.html': { section: 'support', module: 'reseller' },
+  'https://i2pp.com/requests': { section: 'support', module: 'tickets' },
+  'https://i2pp.com/document/lucas-api': { section: 'support', module: 'guides' },
 }
 
 /**
