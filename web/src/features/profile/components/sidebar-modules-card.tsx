@@ -157,6 +157,11 @@ export function SidebarModulesCard() {
           description: t('Apply to onboard your upstream channel.'),
         },
         {
+          key: 'enterprise',
+          title: t('Enterprise Partnership'),
+          description: t('Connect with us for enterprise solutions.'),
+        },
+        {
           key: 'reseller',
           title: t('Become a Reseller'),
           description: t('Partner with us as a reseller.'),
