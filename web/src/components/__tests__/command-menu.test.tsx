@@ -25,7 +25,7 @@ import {
 } from '@tanstack/react-router'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterAll, afterEach, beforeAll, expect, test } from 'vitest'
+import { afterAll, afterEach, beforeAll, expect, test, vi } from 'vitest'
 
 import { SearchProvider } from '@/context/search-provider'
 import { ROLE } from '@/lib/roles'
@@ -127,4 +127,24 @@ test('pages hidden in the sidebar settings stay out of search', async () => {
 
   expect(entries).not.toContain('Wallet')
   expect(entries).toContain('Profile')
+})
+
+test('support entries open external links in a new tab from search', async () => {
+  const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+
+  const entries = await searchEntriesFor(ROLE.USER)
+  expect(entries).toEqual(
+    expect.arrayContaining(['Telegram Channel', 'Usage Guides'])
+  )
+
+  await userEvent.click(
+    await screen.findByRole('option', { name: /Telegram Channel/ })
+  )
+
+  expect(openSpy).toHaveBeenCalledWith(
+    'https://t.me/i2pp_studio_channel',
+    '_blank',
+    'noopener,noreferrer'
+  )
+  openSpy.mockRestore()
 })
