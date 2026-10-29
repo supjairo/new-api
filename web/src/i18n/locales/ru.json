@@ -7450,6 +7450,12 @@
     "You receive this bonus in your invitation balance every time a friend signs up through your link.": "Ваш баланс приглашений увеличивается на эту награду за каждую регистрацию друга по вашей ссылке.",
     "Top-up rebate": "Возврат за пополнение",
     "{{percent}}% of each top-up": "{{percent}}% с каждого пополнения",
-    "Every time an invited user tops up, you earn this percentage of the amount as invitation balance.": "При каждом пополнении приглашённого пользователя вы получаете этот процент суммы на баланс приглашений."
+    "Every time an invited user tops up, you earn this percentage of the amount as invitation balance.": "При каждом пополнении приглашённого пользователя вы получаете этот процент суммы на баланс приглашений.",
+    "By clicking sign in, you agree to our <agreementLink>User Agreement</agreementLink> and <privacyLink>Privacy Policy</privacyLink>.": "Нажимая «Войти», вы соглашаетесь с <agreementLink>Пользовательское соглашение</agreementLink> и <privacyLink>Политика конфиденциальности</privacyLink>.",
+    "By creating an account, you agree to our <agreementLink>User Agreement</agreementLink> and <privacyLink>Privacy Policy</privacyLink>.": "Создавая аккаунт, вы соглашаетесь с <agreementLink>Пользовательское соглашение</agreementLink> и <privacyLink>Политика конфиденциальности</privacyLink>.",
+    "By clicking sign in, you agree to our <agreementLink>User Agreement</agreementLink>.": "Нажимая «Войти», вы соглашаетесь с <agreementLink>Пользовательское соглашение</agreementLink>.",
+    "By creating an account, you agree to our <agreementLink>User Agreement</agreementLink>.": "Создавая аккаунт, вы соглашаетесь с <agreementLink>Пользовательское соглашение</agreementLink>.",
+    "By clicking sign in, you agree to our <privacyLink>Privacy Policy</privacyLink>.": "Нажимая «Войти», вы соглашаетесь с <privacyLink>Политика конфиденциальности</privacyLink>.",
+    "By creating an account, you agree to our <privacyLink>Privacy Policy</privacyLink>.": "Создавая аккаунт, вы соглашаетесь с <privacyLink>Политика конфиденциальности</privacyLink>."
   }
 }

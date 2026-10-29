@@ -7450,6 +7450,12 @@
     "You receive this bonus in your invitation balance every time a friend signs up through your link.": "友人があなたのリンクから登録するたびに、招待残高にこのボーナスが加算されます。",
     "Top-up rebate": "チャージリベート",
     "{{percent}}% of each top-up": "各チャージの {{percent}}%",
-    "Every time an invited user tops up, you earn this percentage of the amount as invitation balance.": "招待したユーザーがチャージするたびに、金額のこの割合が招待残高として加算されます。"
+    "Every time an invited user tops up, you earn this percentage of the amount as invitation balance.": "招待したユーザーがチャージするたびに、金額のこの割合が招待残高として加算されます。",
+    "By clicking sign in, you agree to our <agreementLink>User Agreement</agreementLink> and <privacyLink>Privacy Policy</privacyLink>.": "サインインすることで、<agreementLink>ユーザー利用規約</agreementLink>および<privacyLink>プライバシーポリシー</privacyLink>に同意したものとみなされます。",
+    "By creating an account, you agree to our <agreementLink>User Agreement</agreementLink> and <privacyLink>Privacy Policy</privacyLink>.": "アカウントを作成することで、<agreementLink>ユーザー利用規約</agreementLink>および<privacyLink>プライバシーポリシー</privacyLink>に同意したものとみなされます。",
+    "By clicking sign in, you agree to our <agreementLink>User Agreement</agreementLink>.": "サインインすることで、<agreementLink>ユーザー利用規約</agreementLink>に同意したものとみなされます。",
+    "By creating an account, you agree to our <agreementLink>User Agreement</agreementLink>.": "アカウントを作成することで、<agreementLink>ユーザー利用規約</agreementLink>に同意したものとみなされます。",
+    "By clicking sign in, you agree to our <privacyLink>Privacy Policy</privacyLink>.": "サインインすることで、<privacyLink>プライバシーポリシー</privacyLink>に同意したものとみなされます。",
+    "By creating an account, you agree to our <privacyLink>Privacy Policy</privacyLink>.": "アカウントを作成することで、<privacyLink>プライバシーポリシー</privacyLink>に同意したものとみなされます。"
   }
 }

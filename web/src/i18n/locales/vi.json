@@ -7450,6 +7450,12 @@
     "You receive this bonus in your invitation balance every time a friend signs up through your link.": "Số dư mời của bạn sẽ được cộng phần thưởng này mỗi khi có bạn bè đăng ký qua liên kết của bạn.",
     "Top-up rebate": "Hoàn tiền nạp",
     "{{percent}}% of each top-up": "{{percent}}% mỗi lần nạp",
-    "Every time an invited user tops up, you earn this percentage of the amount as invitation balance.": "Mỗi lần người được mời nạp tiền, bạn nhận phần trăm số tiền đó vào số dư mời."
+    "Every time an invited user tops up, you earn this percentage of the amount as invitation balance.": "Mỗi lần người được mời nạp tiền, bạn nhận phần trăm số tiền đó vào số dư mời.",
+    "By clicking sign in, you agree to our <agreementLink>User Agreement</agreementLink> and <privacyLink>Privacy Policy</privacyLink>.": "Khi nhấp đăng nhập, bạn đồng ý với <agreementLink>Thỏa thuận người dùng</agreementLink> và <privacyLink>Chính sách quyền riêng tư</privacyLink> của chúng tôi.",
+    "By creating an account, you agree to our <agreementLink>User Agreement</agreementLink> and <privacyLink>Privacy Policy</privacyLink>.": "Khi tạo tài khoản, bạn đồng ý với <agreementLink>Thỏa thuận người dùng</agreementLink> và <privacyLink>Chính sách quyền riêng tư</privacyLink> của chúng tôi.",
+    "By clicking sign in, you agree to our <agreementLink>User Agreement</agreementLink>.": "Khi nhấp đăng nhập, bạn đồng ý với <agreementLink>Thỏa thuận người dùng</agreementLink> của chúng tôi.",
+    "By creating an account, you agree to our <agreementLink>User Agreement</agreementLink>.": "Khi tạo tài khoản, bạn đồng ý với <agreementLink>Thỏa thuận người dùng</agreementLink> của chúng tôi.",
+    "By clicking sign in, you agree to our <privacyLink>Privacy Policy</privacyLink>.": "Khi nhấp đăng nhập, bạn đồng ý với <privacyLink>Chính sách quyền riêng tư</privacyLink> của chúng tôi.",
+    "By creating an account, you agree to our <privacyLink>Privacy Policy</privacyLink>.": "Khi tạo tài khoản, bạn đồng ý với <privacyLink>Chính sách quyền riêng tư</privacyLink> của chúng tôi."
   }
 }

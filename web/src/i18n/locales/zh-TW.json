@@ -7450,6 +7450,12 @@
     "You receive this bonus in your invitation balance every time a friend signs up through your link.": "每有一位好友透過你的連結註冊，你的邀請餘額就會增加這筆獎勵。",
     "Top-up rebate": "充值返利",
     "{{percent}}% of each top-up": "每筆充值的 {{percent}}%",
-    "Every time an invited user tops up, you earn this percentage of the amount as invitation balance.": "受邀用戶每次充值時，你都會按充值金額的這個比例獲得邀請餘額。"
+    "Every time an invited user tops up, you earn this percentage of the amount as invitation balance.": "受邀用戶每次充值時，你都會按充值金額的這個比例獲得邀請餘額。",
+    "By clicking sign in, you agree to our <agreementLink>User Agreement</agreementLink> and <privacyLink>Privacy Policy</privacyLink>.": "點擊登入即表示您同意我們的<agreementLink>用戶協議</agreementLink>和<privacyLink>私隱政策</privacyLink>。",
+    "By creating an account, you agree to our <agreementLink>User Agreement</agreementLink> and <privacyLink>Privacy Policy</privacyLink>.": "建立帳號即表示您同意我們的<agreementLink>用戶協議</agreementLink>和<privacyLink>私隱政策</privacyLink>。",
+    "By clicking sign in, you agree to our <agreementLink>User Agreement</agreementLink>.": "點擊登入即表示您同意我們的<agreementLink>用戶協議</agreementLink>。",
+    "By creating an account, you agree to our <agreementLink>User Agreement</agreementLink>.": "建立帳號即表示您同意我們的<agreementLink>用戶協議</agreementLink>。",
+    "By clicking sign in, you agree to our <privacyLink>Privacy Policy</privacyLink>.": "點擊登入即表示您同意我們的<privacyLink>私隱政策</privacyLink>。",
+    "By creating an account, you agree to our <privacyLink>Privacy Policy</privacyLink>.": "建立帳號即表示您同意我們的<privacyLink>私隱政策</privacyLink>。"
   }
 }

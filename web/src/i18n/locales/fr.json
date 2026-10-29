@@ -7450,6 +7450,12 @@
     "You receive this bonus in your invitation balance every time a friend signs up through your link.": "Votre solde d’invitation augmente de cette récompense chaque fois qu’un ami s’inscrit via votre lien.",
     "Top-up rebate": "Remise sur recharge",
     "{{percent}}% of each top-up": "{{percent}} % de chaque recharge",
-    "Every time an invited user tops up, you earn this percentage of the amount as invitation balance.": "À chaque recharge d’un filleul, vous gagnez ce pourcentage du montant en solde d’invitation."
+    "Every time an invited user tops up, you earn this percentage of the amount as invitation balance.": "À chaque recharge d’un filleul, vous gagnez ce pourcentage du montant en solde d’invitation.",
+    "By clicking sign in, you agree to our <agreementLink>User Agreement</agreementLink> and <privacyLink>Privacy Policy</privacyLink>.": "En vous connectant, vous acceptez nos <agreementLink>Accord utilisateur</agreementLink> et <privacyLink>Politique de confidentialité</privacyLink>.",
+    "By creating an account, you agree to our <agreementLink>User Agreement</agreementLink> and <privacyLink>Privacy Policy</privacyLink>.": "En créant un compte, vous acceptez nos <agreementLink>Accord utilisateur</agreementLink> et <privacyLink>Politique de confidentialité</privacyLink>.",
+    "By clicking sign in, you agree to our <agreementLink>User Agreement</agreementLink>.": "En vous connectant, vous acceptez nos <agreementLink>Accord utilisateur</agreementLink>.",
+    "By creating an account, you agree to our <agreementLink>User Agreement</agreementLink>.": "En créant un compte, vous acceptez nos <agreementLink>Accord utilisateur</agreementLink>.",
+    "By clicking sign in, you agree to our <privacyLink>Privacy Policy</privacyLink>.": "En vous connectant, vous acceptez notre <privacyLink>Politique de confidentialité</privacyLink>.",
+    "By creating an account, you agree to our <privacyLink>Privacy Policy</privacyLink>.": "En créant un compte, vous acceptez notre <privacyLink>Politique de confidentialité</privacyLink>."
   }
 }

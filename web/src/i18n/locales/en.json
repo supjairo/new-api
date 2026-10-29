@@ -7450,6 +7450,12 @@
     "You receive this bonus in your invitation balance every time a friend signs up through your link.": "You receive this bonus in your invitation balance every time a friend signs up through your link.",
     "Top-up rebate": "Top-up rebate",
     "{{percent}}% of each top-up": "{{percent}}% of each top-up",
-    "Every time an invited user tops up, you earn this percentage of the amount as invitation balance.": "Every time an invited user tops up, you earn this percentage of the amount as invitation balance."
+    "Every time an invited user tops up, you earn this percentage of the amount as invitation balance.": "Every time an invited user tops up, you earn this percentage of the amount as invitation balance.",
+    "By clicking sign in, you agree to our <agreementLink>User Agreement</agreementLink> and <privacyLink>Privacy Policy</privacyLink>.": "By clicking sign in, you agree to our <agreementLink>User Agreement</agreementLink> and <privacyLink>Privacy Policy</privacyLink>.",
+    "By creating an account, you agree to our <agreementLink>User Agreement</agreementLink> and <privacyLink>Privacy Policy</privacyLink>.": "By creating an account, you agree to our <agreementLink>User Agreement</agreementLink> and <privacyLink>Privacy Policy</privacyLink>.",
+    "By clicking sign in, you agree to our <agreementLink>User Agreement</agreementLink>.": "By clicking sign in, you agree to our <agreementLink>User Agreement</agreementLink>.",
+    "By creating an account, you agree to our <agreementLink>User Agreement</agreementLink>.": "By creating an account, you agree to our <agreementLink>User Agreement</agreementLink>.",
+    "By clicking sign in, you agree to our <privacyLink>Privacy Policy</privacyLink>.": "By clicking sign in, you agree to our <privacyLink>Privacy Policy</privacyLink>.",
+    "By creating an account, you agree to our <privacyLink>Privacy Policy</privacyLink>.": "By creating an account, you agree to our <privacyLink>Privacy Policy</privacyLink>."
   }
 }
