@@ -326,6 +326,7 @@ describe('support sidebar group', () => {
     'Telegram Channel',
     'Community',
     'Channel Onboarding',
+    'Enterprise Partnership',
     'Become a Reseller',
     'Support Tickets',
     'Usage Guides',
