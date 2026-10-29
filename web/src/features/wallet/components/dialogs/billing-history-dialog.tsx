@@ -45,7 +45,7 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
-import { formatCurrencyFromUSD } from '@/lib/currency'
+import { formatCurrencyFromUSD, formatQuotaWithCurrency } from '@/lib/currency'
 import { formatNumber } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -269,7 +269,7 @@ export function BillingHistoryDialog({
                             </Label>
                             <div className='text-sm font-semibold text-green-600'>
                               +
-                              {formatCurrencyFromUSD(record.bonus_quota ?? 0, {
+                              {formatQuotaWithCurrency(record.bonus_quota ?? 0, {
                                 digitsLarge: 2,
                                 digitsSmall: 2,
                                 abbreviate: false,
