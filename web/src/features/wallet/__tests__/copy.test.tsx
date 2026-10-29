@@ -73,6 +73,37 @@ it('translates billing history statuses and updates them when the language chang
   }
 })
 
+it('shows the top-up bonus converted from quota instead of the raw quota value', async () => {
+  vi.spyOn(api, 'get').mockResolvedValue({
+    data: {
+      success: true,
+      data: {
+        total: 1,
+        items: [
+          {
+            id: 1,
+            status: 'success',
+            amount: 100,
+            money: 97,
+            trade_no: 'bonus-order',
+            payment_method: 'alipay',
+            create_time: 1,
+            bonus_quota: 5000000,
+          },
+        ],
+      },
+    },
+  })
+  render(
+    <I18nextProvider i18n={i18n}>
+      <BillingHistoryDialog open onOpenChange={vi.fn()} />
+    </I18nextProvider>
+  )
+  await screen.findByText('bonus-order')
+  expect(screen.queryByText('+$5,000,000')).not.toBeInTheDocument()
+  expect(screen.getByText('+$10')).toBeVisible()
+})
+
 it.each([
   { priceRatio: 7.3, paid: '584', saved: '146', full: '146' },
   { priceRatio: 0.000123, paid: '0.0098', saved: '0.0025', full: '0.0025' },
