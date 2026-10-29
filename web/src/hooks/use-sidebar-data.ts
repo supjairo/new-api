@@ -20,6 +20,7 @@ import {
   Activity,
   BookOpen,
   Box,
+  Briefcase,
   Building2,
   CalendarDays,
   ClipboardList,
@@ -223,6 +224,12 @@ export function useSidebarData(): SidebarData {
             title: t('Channel Onboarding'),
             url: 'https://i2pp.com/archives/1375.html',
             icon: Building2,
+            external: true,
+          },
+          {
+            title: t('Enterprise Partnership'),
+            url: 'https://i2pp.com/archives/1379.html',
+            icon: Briefcase,
             external: true,
           },
           {

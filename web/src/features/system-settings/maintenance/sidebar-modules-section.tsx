@@ -190,6 +190,10 @@ export function SidebarModulesSection({
         title: t('Channel Onboarding'),
         description: t('Apply to onboard your upstream channel.'),
       },
+      enterprise: {
+        title: t('Enterprise Partnership'),
+        description: t('Connect with us for enterprise solutions.'),
+      },
       reseller: {
         title: t('Become a Reseller'),
         description: t('Partner with us as a reseller.'),

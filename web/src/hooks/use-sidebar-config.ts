@@ -75,6 +75,7 @@ const DEFAULT_SIDEBAR_MODULES: SidebarModulesAdminConfig = {
     telegram: true,
     community: true,
     channel: true,
+    enterprise: true,
     reseller: true,
     tickets: true,
     guides: true,
@@ -138,6 +139,10 @@ const URL_TO_CONFIG_MAP: Record<string, { section: string; module: string }> = {
   'https://t.me/i2pp_studio_channel': { section: 'support', module: 'telegram' },
   'https://i2pp.com/circle/lucas_api': { section: 'support', module: 'community' },
   'https://i2pp.com/archives/1375.html': { section: 'support', module: 'channel' },
+  'https://i2pp.com/archives/1379.html': {
+    section: 'support',
+    module: 'enterprise',
+  },
   'https://i2pp.com/archives/1373.html': { section: 'support', module: 'reseller' },
   'https://i2pp.com/requests': { section: 'support', module: 'tickets' },
   'https://i2pp.com/document/lucas-api': { section: 'support', module: 'guides' },

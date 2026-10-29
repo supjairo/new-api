@@ -97,6 +97,7 @@ export const SIDEBAR_MODULES_DEFAULT: SidebarModulesAdminConfig = {
     telegram: true,
     community: true,
     channel: true,
+    enterprise: true,
     reseller: true,
     tickets: true,
     guides: true,
