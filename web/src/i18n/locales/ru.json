@@ -7456,6 +7456,13 @@
     "By clicking sign in, you agree to our <agreementLink>User Agreement</agreementLink>.": "Нажимая «Войти», вы соглашаетесь с <agreementLink>Пользовательское соглашение</agreementLink>.",
     "By creating an account, you agree to our <agreementLink>User Agreement</agreementLink>.": "Создавая аккаунт, вы соглашаетесь с <agreementLink>Пользовательское соглашение</agreementLink>.",
     "By clicking sign in, you agree to our <privacyLink>Privacy Policy</privacyLink>.": "Нажимая «Войти», вы соглашаетесь с <privacyLink>Политика конфиденциальности</privacyLink>.",
-    "By creating an account, you agree to our <privacyLink>Privacy Policy</privacyLink>.": "Создавая аккаунт, вы соглашаетесь с <privacyLink>Политика конфиденциальности</privacyLink>."
+    "By creating an account, you agree to our <privacyLink>Privacy Policy</privacyLink>.": "Создавая аккаунт, вы соглашаетесь с <privacyLink>Политика конфиденциальности</privacyLink>.",
+    "Support": "Поддержка",
+    "Telegram Channel": "Telegram-канал",
+    "Community": "Сообщество",
+    "Channel Onboarding": "Подключение каналов",
+    "Become a Reseller": "Стать реселлером",
+    "Support Tickets": "Обращения в поддержку",
+    "Usage Guides": "Руководства"
   }
 }

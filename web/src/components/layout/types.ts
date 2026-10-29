@@ -16,8 +16,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { type LinkProps } from '@tanstack/react-router'
-import { type TFunction } from 'i18next'
+import type { LinkProps } from '@tanstack/react-router'
+import type { TFunction } from 'i18next'
 
 /**
  * Base navigation item type
@@ -38,9 +38,13 @@ type BaseNavItem = {
 
 /**
  * Navigation link type - single link item
+ *
+ * `external` marks links that leave the console (e.g. support resources); they
+ * are rendered as anchors that open in a new tab instead of router links.
  */
 export type NavLink = BaseNavItem & {
   url: LinkProps['to'] | (string & {})
+  external?: boolean
   items?: never
   type?: never
 }

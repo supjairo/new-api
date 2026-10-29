@@ -7456,6 +7456,13 @@
     "By clicking sign in, you agree to our <agreementLink>User Agreement</agreementLink>.": "En vous connectant, vous acceptez nos <agreementLink>Accord utilisateur</agreementLink>.",
     "By creating an account, you agree to our <agreementLink>User Agreement</agreementLink>.": "En créant un compte, vous acceptez nos <agreementLink>Accord utilisateur</agreementLink>.",
     "By clicking sign in, you agree to our <privacyLink>Privacy Policy</privacyLink>.": "En vous connectant, vous acceptez notre <privacyLink>Politique de confidentialité</privacyLink>.",
-    "By creating an account, you agree to our <privacyLink>Privacy Policy</privacyLink>.": "En créant un compte, vous acceptez notre <privacyLink>Politique de confidentialité</privacyLink>."
+    "By creating an account, you agree to our <privacyLink>Privacy Policy</privacyLink>.": "En créant un compte, vous acceptez notre <privacyLink>Politique de confidentialité</privacyLink>.",
+    "Support": "Support",
+    "Telegram Channel": "Canal Telegram",
+    "Community": "Communauté",
+    "Channel Onboarding": "Intégration de canaux",
+    "Become a Reseller": "Devenir revendeur",
+    "Support Tickets": "Tickets d'assistance",
+    "Usage Guides": "Guides d'utilisation"
   }
 }

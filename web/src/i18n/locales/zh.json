@@ -7456,6 +7456,13 @@
     "By clicking sign in, you agree to our <agreementLink>User Agreement</agreementLink>.": "点击登录即表示您同意我们的<agreementLink>用户协议</agreementLink>。",
     "By creating an account, you agree to our <agreementLink>User Agreement</agreementLink>.": "创建账户即表示您同意我们的<agreementLink>用户协议</agreementLink>。",
     "By clicking sign in, you agree to our <privacyLink>Privacy Policy</privacyLink>.": "点击登录即表示您同意我们的<privacyLink>隐私政策</privacyLink>。",
-    "By creating an account, you agree to our <privacyLink>Privacy Policy</privacyLink>.": "创建账户即表示您同意我们的<privacyLink>隐私政策</privacyLink>。"
+    "By creating an account, you agree to our <privacyLink>Privacy Policy</privacyLink>.": "创建账户即表示您同意我们的<privacyLink>隐私政策</privacyLink>。",
+    "Support": "支持",
+    "Telegram Channel": "Telegram 频道",
+    "Community": "交流社区",
+    "Channel Onboarding": "渠道入驻",
+    "Become a Reseller": "成为代理",
+    "Support Tickets": "服务工单",
+    "Usage Guides": "使用教程"
   }
 }
