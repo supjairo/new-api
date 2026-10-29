@@ -104,7 +104,7 @@ describe('security sidebar visibility', () => {
       result.current
         .find((group) => group.id === 'personal')
         ?.items.map((item) => item.title)
-    ).toEqual(['Wallet', 'Profile', 'Security & Access'])
+    ).toEqual(['Wallet', 'Referral Program', 'Profile', 'Security & Access'])
     expect(
       result.current
         .flatMap((group) => group.items)
@@ -318,5 +318,50 @@ describe('model pricing badge', () => {
     ).toBeInTheDocument()
     expect(get).not.toHaveBeenCalledWith('/api/option/model_pricing/issues')
     expect(badgedEntries()).toHaveLength(0)
+  })
+})
+
+describe('support sidebar group', () => {
+  const supportTitles = [
+    'Telegram Channel',
+    'Community',
+    'Channel Onboarding',
+    'Become a Reseller',
+    'Support Tickets',
+    'Usage Guides',
+  ]
+
+  it('lists all external support entries by default', () => {
+    const { result } = sidebarFor()
+    const items =
+      result.current.find((group) => group.id === 'support')?.items ?? []
+    expect(items.map((item) => item.title)).toEqual(supportTitles)
+    expect(items.every((item) => 'external' in item && item.external)).toBe(
+      true
+    )
+  })
+
+  it.each([
+    [{ support: { enabled: true, tickets: false } }, undefined],
+    [{ support: { enabled: false } }, { support: { tickets: true } }],
+    [undefined, { support: { enabled: true, tickets: false } }],
+    [undefined, { support: { enabled: false } }],
+  ])(
+    'admin or user disablement hides the support entries (%j, %j)',
+    (admin, user) => {
+      const { result } = sidebarFor(admin, user)
+      expect(
+        result.current.flatMap((group) => group.items).map((item) => item.title)
+      ).not.toContain('Support Tickets')
+    }
+  )
+
+  it('hiding one support entry keeps the other entries and the group', () => {
+    const { result } = sidebarFor({ support: { enabled: true, guides: false } })
+    const items =
+      result.current.find((group) => group.id === 'support')?.items ?? []
+    expect(items.map((item) => item.title)).toEqual(
+      supportTitles.filter((title) => title !== 'Usage Guides')
+    )
   })
 })

@@ -92,6 +92,15 @@ export const SIDEBAR_MODULES_DEFAULT: SidebarModulesAdminConfig = {
     enabled: true,
     calendar: true,
   },
+  support: {
+    enabled: true,
+    telegram: true,
+    community: true,
+    channel: true,
+    reseller: true,
+    tickets: true,
+    guides: true,
+  },
 }
 
 const toBoolean = (value: unknown, fallback: boolean): boolean => {

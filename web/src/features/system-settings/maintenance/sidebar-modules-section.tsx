@@ -85,6 +85,10 @@ export function SidebarModulesSection({
       title: t('Activity area'),
       description: t('Activity calendar and event scheduling.'),
     },
+    support: {
+      title: t('Support area'),
+      description: t('External help, community and partnership resources.'),
+    },
   }
 
   const moduleMeta: Record<
@@ -171,6 +175,32 @@ export function SidebarModulesSection({
       calendar: {
         title: t('Activity Calendar'),
         description: t('Manage scheduled activities and their descriptions.'),
+      },
+    },
+    support: {
+      telegram: {
+        title: t('Telegram Channel'),
+        description: t('Join our Telegram channel for announcements.'),
+      },
+      community: {
+        title: t('Community'),
+        description: t('Discuss and share with other users.'),
+      },
+      channel: {
+        title: t('Channel Onboarding'),
+        description: t('Apply to onboard your upstream channel.'),
+      },
+      reseller: {
+        title: t('Become a Reseller'),
+        description: t('Partner with us as a reseller.'),
+      },
+      tickets: {
+        title: t('Support Tickets'),
+        description: t('Submit and track service requests.'),
+      },
+      guides: {
+        title: t('Usage Guides'),
+        description: t('Read setup and usage documentation.'),
       },
     },
   }
