@@ -258,10 +258,25 @@ func updateConfigFromMap(config any, configMap map[string]string) error {
 			// are properly cleared.
 			fresh := reflect.New(field.Type())
 			if err := json.Unmarshal([]byte(strValue), fresh.Interface()); err != nil {
-				continue
+				// 空字符串表示清空该配置（例如后台清空赠送/折扣 JSON 时前端提交 ''）。
+				// 必须同步清空内存中的 map，否则接口会继续返回旧配置。
+				if strings.TrimSpace(strValue) != "" {
+					continue
+				}
+				fresh.Elem().Set(reflect.MakeMap(field.Type()))
 			}
 			field.Set(fresh.Elem())
-		case reflect.Slice, reflect.Struct:
+		case reflect.Slice:
+			fresh := reflect.New(field.Type())
+			if err := json.Unmarshal([]byte(strValue), fresh.Interface()); err != nil {
+				// 与 Map 一致：空字符串视为清空该配置。
+				if strings.TrimSpace(strValue) != "" {
+					continue
+				}
+				fresh.Elem().Set(reflect.MakeSlice(field.Type(), 0, 0))
+			}
+			field.Set(fresh.Elem())
+		case reflect.Struct:
 			err := json.Unmarshal([]byte(strValue), field.Addr().Interface())
 			if err != nil {
 				continue

@@ -2,6 +2,9 @@ package config
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type testConfigWithMap struct {
@@ -93,4 +96,63 @@ func TestUpdateConfigFromMap_ScalarFieldsUnchanged(t *testing.T) {
 	if cfg.Modes["m"] != "v" {
 		t.Errorf("Modes should be unchanged, got %v", cfg.Modes)
 	}
+}
+
+// testPaymentLikeConfig mirrors PaymentSetting: JSON collections whose values
+// arrive as strings from the options table and are cleared from the admin UI
+// by submitting an empty string.
+type testPaymentLikeConfig struct {
+	AmountOptions  []int           `json:"amount_options"`
+	AmountDiscount map[int]float64 `json:"amount_discount"`
+	AmountBonus    map[int]float64 `json:"amount_bonus"`
+}
+
+func TestUpdateConfigFromMap_EmptyStringClearsJSONCollections(t *testing.T) {
+	assert := assert.New(t)
+	cfg := &testPaymentLikeConfig{
+		AmountOptions:  []int{10, 20, 50},
+		AmountDiscount: map[int]float64{100: 0.96},
+		AmountBonus:    map[int]float64{100: 10},
+	}
+
+	err := UpdateConfigFromMap(cfg, map[string]string{
+		"amount_options":  "",
+		"amount_discount": "",
+		"amount_bonus":    "   ",
+	})
+	require.NoError(t, err)
+
+	assert.Empty(cfg.AmountOptions, "empty string should clear the slice")
+	assert.Empty(cfg.AmountDiscount, "empty string should clear the discount map")
+	assert.Empty(cfg.AmountBonus, "whitespace-only string should clear the bonus map")
+}
+
+func TestUpdateConfigFromMap_EmptyStringThenValidJSONRestores(t *testing.T) {
+	assert := assert.New(t)
+	cfg := &testPaymentLikeConfig{
+		AmountBonus: map[int]float64{100: 10},
+	}
+
+	err := UpdateConfigFromMap(cfg, map[string]string{"amount_bonus": ""})
+	require.NoError(t, err)
+	assert.Empty(cfg.AmountBonus, "empty string should clear the bonus map")
+
+	err = UpdateConfigFromMap(cfg, map[string]string{"amount_bonus": `{"50":5}`})
+	require.NoError(t, err)
+	assert.Equal(map[int]float64{50: 5}, cfg.AmountBonus, "valid JSON must restore the map")
+
+	err = UpdateConfigFromMap(cfg, map[string]string{"amount_bonus": `{}`})
+	require.NoError(t, err)
+	assert.Empty(cfg.AmountBonus, "{} should clear the bonus map")
+}
+
+func TestUpdateConfigFromMap_InvalidNonEmptyJSONKeepsOldValue(t *testing.T) {
+	assert := assert.New(t)
+	cfg := &testPaymentLikeConfig{
+		AmountBonus: map[int]float64{100: 10},
+	}
+
+	err := UpdateConfigFromMap(cfg, map[string]string{"amount_bonus": "{bad json"})
+	require.NoError(t, err)
+	assert.Equal(map[int]float64{100: 10}, cfg.AmountBonus, "invalid non-empty JSON must not clobber the old value")
 }
